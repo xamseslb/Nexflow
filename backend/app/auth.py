@@ -5,6 +5,7 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
+from jwt.exceptions import PyJWKClientConnectionError
 from .config import settings
 
 bearer = HTTPBearer(auto_error=False)
@@ -30,5 +31,8 @@ def identity(credentials: HTTPAuthorizationCredentials | None = Depends(bearer))
         if claims.get("role") != "authenticated" or claims.get("is_anonymous", False):
             raise ValueError("Unsupported identity")
         return UUID(claims["sub"])
+    except PyJWKClientConnectionError:
+        raise HTTPException(503, "Innloggingstjenesten er midlertidig utilgjengelig. Prøv igjen.",
+                            headers={"Retry-After": "30"}) from None
     except (jwt.PyJWTError, ValueError, TypeError):
         raise HTTPException(401, "Ugyldig eller utløpt innlogging", headers={"WWW-Authenticate": "Bearer"}) from None

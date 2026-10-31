@@ -36,3 +36,16 @@ def test_untrusted_claims_are_rejected(signed_identity, override):
     with pytest.raises(HTTPException) as error:
         auth.identity(credentials(override))
     assert error.value.status_code == 401
+
+
+def test_identity_provider_outage_is_retryable(monkeypatch):
+    from jwt.exceptions import PyJWKClientConnectionError
+    monkeypatch.setattr(auth, "settings", lambda: SimpleNamespace(supabase_url="https://test.supabase.co"))
+    def unavailable(token):
+        raise PyJWKClientConnectionError("provider unavailable")
+    monkeypatch.setattr(auth, "jwks_client", lambda: SimpleNamespace(get_signing_key_from_jwt=unavailable))
+    with pytest.raises(HTTPException) as error:
+        auth.identity(HTTPAuthorizationCredentials(scheme="Bearer", credentials="token"))
+    assert error.value.status_code == 503
+    assert error.value.headers["Retry-After"] == "30"
+    assert "provider unavailable" not in error.value.detail

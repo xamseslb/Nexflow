@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from .db import session
-from .domain import allocate, can_call, can_approve
+from .domain import Eligibility, allocate, can_call, can_approve
 from .models import Project, Membership, Lead, Call, RegistryCheck, Consent, Product, Sale, Meeting, AuditEvent, Job
 from .schemas import LeadCreate, ImportLeads, CallResult, SaleCreate, MeetingCreate, MoveAssignment
 
@@ -58,6 +58,8 @@ def eligibility(db: Session, project: Project, lead: Lead):
                         user_id=db.info["user_id"], now=current,
                         checked_at=check.checked_at if check else None,
                         registry_reserved=check.reserved if check else None, consent_valid=consent is not None)
+    if lead.status in ("sold", "declined"):
+        decision = Eligibility(False, "Leadet er avsluttet")
     return decision, {"allowed": decision.allowed, "reason": decision.reason, "evaluated_at": current.isoformat(),
                       "registry_check_id": str(check.id) if check else None,
                       "consent_id": str(consent) if consent else None, "rule_version": 1}
@@ -76,7 +78,9 @@ def me(db: Session = Db):
 def projects(db: Session = Db):
     return [{"id": p.id, "name": p.name, "description": p.description, "active": p.active, "kind": p.kind,
              "partner_id": p.partner_id, "role": db.get(Membership, (p.id, db.info["user_id"])).role}
-            for p in db.scalars(select(Project).order_by(Project.name))]
+            for p in db.scalars(select(Project).join(Membership, Membership.project_id == Project.id)
+                                .where(Membership.user_id == db.info["user_id"], Membership.active.is_(True))
+                                .order_by(Project.name))]
 
 
 @router.get("/projects/{project_id}/leads")
