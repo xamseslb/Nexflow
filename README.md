@@ -12,6 +12,8 @@ møtebooking, enkel produktbasert salgsfordeling, ledergodkjenning og CSV-ekspor
 Demonstrasjonen bruker kun fiktive data i minnet og utfører ingen anrop eller utsendinger.
 Ekte bruk krever Supabase og migrering. Ingen auth-bypass eller lokal produksjonsdatabase.
 
+Rapporter, diagrammer og oppfølgingskø er beskrevet i [rapporter og oppfølging](docs/reporting-and-follow-ups.md).
+
 Se [krav og leveransestatus](docs/requirements.md) og [arkitektur](docs/architecture.md).
 
 ## Lokal start

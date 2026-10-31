@@ -1,0 +1,46 @@
+import { expect, test } from '@playwright/test'
+
+async function navigate(page: import('@playwright/test').Page, name: string) {
+  const menu = page.getByRole('button', { name: 'Åpne meny' })
+  if (await menu.isVisible()) await menu.click()
+  await page.locator('nav').getByRole('button', { name, exact: true }).click()
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
+})
+
+test('reports show chart definitions, cohort conversion and accessible daily data', async ({ page }) => {
+  await navigate(page, 'Rapporter')
+  await expect(page.getByText('Illustrasjonsdata', { exact: false })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Pipeline akkurat nå' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Måltall i diagram' }).selectOption('sales')
+  await expect(page.getByRole('img', { name: /Salg registrert per dag/ })).toBeVisible()
+  await expect(page.getByRole('img', { name: /Fordeling av salgsbeløp: median/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Fra nytt lead til salg' })).toBeVisible()
+  await page.getByText('Se datagrunnlaget per dag', { exact: true }).click()
+  await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.getByRole('row')).toHaveCount(31)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+})
+
+test('follow-up can be created, completed and inspected from its lead', async ({ page }) => {
+  await navigate(page, 'Oppfølging')
+  await page.getByRole('combobox', { name: 'Lead', exact: true }).selectOption('1')
+  await page.getByLabel('Oppgave', { exact: true }).fill('Følg opp tilbudet til Fjord')
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 16)
+  await page.getByLabel('Forfallsdato').fill(tomorrow)
+  await page.getByLabel('Notat', { exact: true }).fill('Avklar beslutning og neste steg')
+  await page.getByRole('button', { name: 'Opprett oppfølging' }).click()
+  await expect(page.locator('.task-list')).toContainText('Følg opp tilbudet til Fjord')
+  await page.locator('.task-list').getByRole('button', { name: 'Fjord & Form' }).click()
+  await expect(page.getByRole('heading', { name: 'Aktivitetshistorikk' })).toBeVisible()
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
+  await page.getByRole('button', { name: 'Fullfør', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Ingen oppgaver i denne visningen' })).toBeVisible()
+  await page.getByLabel('Oppgavestatus').selectOption('done')
+  await expect(page.locator('.task-list')).toContainText('Følg opp tilbudet til Fjord')
+  await expect(page.locator('.task-list')).toContainText('Fullført')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+})

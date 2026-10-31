@@ -92,6 +92,12 @@ def leads(project_id: UUID, search: str = Query(default="", max_length=100), db:
     return [lead_payload(x) for x in db.scalars(query.order_by(Lead.priority.desc(), Lead.created_at).limit(500))]
 
 
+@router.get("/projects/{project_id}/leads/{lead_id}")
+def get_lead(project_id: UUID, lead_id: UUID, db: Session = Db):
+    project_access(db, project_id)
+    return lead_payload(lead_for(db, project_id, lead_id))
+
+
 @router.post("/projects/{project_id}/leads", status_code=201)
 def create_lead(project_id: UUID, body: LeadCreate, db: Session = Db):
     project = project_access(db, project_id, OPERATORS)

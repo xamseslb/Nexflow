@@ -167,3 +167,24 @@ class Job(Record, Scoped, Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class FollowUp(Record, Scoped, Base):
+    __tablename__ = "follow_ups"
+    __table_args__ = scope_constraints(
+        lead_fk(),
+        ForeignKeyConstraint(["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+        CheckConstraint("status IN ('open','done','cancelled')"),
+        CheckConstraint("length(trim(title)) > 0"),
+        CheckConstraint("(status = 'open' AND completed_at IS NULL) OR (status <> 'open' AND completed_at IS NOT NULL)"),
+        UniqueConstraint("project_id", "created_by", "idempotency_key"),
+    )
+    lead_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    assignee_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    created_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    title: Mapped[str] = mapped_column(String(200))
+    note: Mapped[str] = mapped_column(Text, default="")
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    idempotency_key: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))

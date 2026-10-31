@@ -46,3 +46,15 @@ class MeetingCreate(Input):
 class MoveAssignment(Input):
     user_id: UUID
     target_project_id: UUID
+
+
+class FollowUpCreate(Input):
+    lead_id: UUID
+    title: str = Field(min_length=1, max_length=200)
+    note: str = Field(default="", max_length=4000)
+    due_at: AwareDatetime
+    idempotency_key: UUID
+
+
+class FollowUpUpdate(Input):
+    status: Literal["done", "cancelled"]

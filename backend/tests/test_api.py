@@ -33,6 +33,17 @@ def test_callback_requires_aware_timestamp():
         CallResult(outcome="callback", callback_at="2026-11-01T10:00:00")
 
 
+@pytest.mark.parametrize("path", [
+    "/api/v1/projects/00000000-0000-0000-0000-000000000001/reports",
+    "/api/v1/projects/00000000-0000-0000-0000-000000000001/follow-ups",
+    "/api/v1/projects/00000000-0000-0000-0000-000000000001/leads/00000000-0000-0000-0000-000000000002/activity",
+])
+def test_workspace_endpoints_require_authentication(path):
+    response = client.get(path)
+    assert response.status_code == 401
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_openapi_contains_workflows():
     paths = app.openapi()["paths"]
     assert "/api/v1/projects/{project_id}/leads/{lead_id}/call-authorization" in paths

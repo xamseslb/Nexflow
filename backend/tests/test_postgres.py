@@ -97,3 +97,55 @@ def test_partner_role_cannot_reserve(tenant_data):
     with as_user(engine, users[2]) as db, pytest.raises(HTTPException) as error:
         reserve(projects[1], lead_id, db)
     assert error.value.status_code == 403
+
+
+def test_follow_up_rls_hides_other_sellers_tasks(tenant_data):
+    from datetime import datetime, timedelta, timezone
+    from app.models import FollowUp
+    from app.schemas import FollowUpCreate
+    from app.workspace import create_follow_up
+    engine, users, _, projects, lead_id = tenant_data
+    with as_user(engine, users[0]) as db:
+        created = create_follow_up(projects[0], FollowUpCreate(lead_id=lead_id, title="Oppfølging",
+            due_at=datetime.now(timezone.utc) + timedelta(days=1), idempotency_key=uuid4()), db)
+    with as_user(engine, users[0]) as db:
+        assert db.get(FollowUp, created["id"]) is not None
+    with as_user(engine, users[1]) as db:
+        assert db.get(FollowUp, created["id"]) is None
+    with as_user(engine, users[2]) as db:
+        assert db.get(FollowUp, created["id"]) is None
+
+
+def test_concurrent_follow_up_retries_create_one_task(tenant_data):
+    from datetime import datetime, timedelta, timezone
+    from app.models import FollowUp
+    from app.schemas import FollowUpCreate
+    from app.workspace import create_follow_up
+    engine, users, _, projects, lead_id = tenant_data
+    body = FollowUpCreate(lead_id=lead_id, title="Oppfølging",
+        due_at=datetime.now(timezone.utc) + timedelta(days=1), idempotency_key=uuid4())
+    barrier = Barrier(2)
+    def create(_):
+        with as_user(engine, users[0]) as db:
+            barrier.wait(timeout=10)
+            return create_follow_up(projects[0], body, db)["id"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        ids = list(pool.map(create, range(2)))
+    assert ids[0] == ids[1]
+    with as_user(engine, users[0]) as db:
+        assert len(list(db.scalars(select(FollowUp)))) == 1
+
+
+def test_manager_report_executes_postgresql_aggregates(tenant_data):
+    from datetime import datetime, timezone
+    from app.workspace import report
+    engine, users, _, projects, _ = tenant_data
+    with Session(engine) as db, db.begin():
+        db.execute(Membership.__table__.update().where(Membership.user_id == users[0]).values(role="leader"))
+    today = datetime.now(timezone.utc).date()
+    with as_user(engine, users[0]) as db:
+        result = report(projects[0], start=today, end=today, timezone="UTC", db=db)
+        assert result["totals"]["leads"] == 1
+        assert result["totals"]["revenue_ore"] == 0
+        assert result["cohort"]["conversion_percent"] == 0
+        assert result["distributions"]["sale_amount"]["available"] is False
