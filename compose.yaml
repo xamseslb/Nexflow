@@ -1,0 +1,20 @@
+services:
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    restart: unless-stopped
+    ports: ["127.0.0.1:8000:8000"]
+  worker:
+    build: ./backend
+    env_file: ./backend/.env
+    command: ["python", "-m", "app.worker"]
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [api]

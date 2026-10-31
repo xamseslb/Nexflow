@@ -1,0 +1,10 @@
+{
+  "name": "hub-crm",
+  "private": true,
+  "workspaces": ["frontend"],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend",
+    "test:e2e": "npm run test:e2e --workspace frontend"
+  }
+}

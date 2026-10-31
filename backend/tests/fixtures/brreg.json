@@ -1,0 +1,8 @@
+{
+  "organisasjonsnummer": "123456789",
+  "navn": "FIKTIV TESTBEDRIFT AS",
+  "antallAnsatte": 12,
+  "naeringskode1": { "kode": "71.110", "beskrivelse": "Arkitektvirksomhet" },
+  "forretningsadresse": { "poststed": "BERGEN" },
+  "dagligLeder": { "navn": "Skal ikke lagres av berikelsen" }
+}
