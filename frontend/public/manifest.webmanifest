@@ -1,11 +1,11 @@
 {
   "id": "/",
-  "name": "Hub CRM",
-  "short_name": "Hub",
+  "name": "Nexflow",
+  "short_name": "Nexflow",
   "lang": "nb",
   "description": "En samlet arbeidsdag for partnerhuben.",
-  "theme_color": "#195b43",
-  "background_color": "#f6f7f9",
+  "theme_color": "#315dcc",
+  "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/",
   "icons": [

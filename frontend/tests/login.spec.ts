@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-test('login is accessible, password visibility works and credentials stay local', async ({ page }) => {
+test('login is accessible, password visibility works and credentials stay local', async ({ page }, testInfo) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Velkommen tilbake.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Logg inn' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true })
   const email = page.getByLabel('E-postadresse', { exact: true })
   const password = page.getByLabel('Passord', { exact: true })
   await email.fill('test@example.invalid')
@@ -14,9 +15,9 @@ test('login is accessible, password visibility works and credentials stay local'
   await expect(password).toHaveAttribute('type', 'password')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
-  await expect(page.getByRole('heading', { name: 'Klar for nye muligheter?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Oversikt' })).toBeVisible()
   await page.getByRole('button', { name: 'Avslutt demo' }).click()
-  await expect(page.getByRole('heading', { name: 'Velkommen tilbake.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Logg inn' })).toBeVisible()
   await expect(email).toHaveValue('')
   await expect(password).toHaveValue('')
 })

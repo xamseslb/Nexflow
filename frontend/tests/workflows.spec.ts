@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
-  await expect(page.getByRole('heading', { name: 'Klar for nye muligheter?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Oversikt' })).toBeVisible()
 })
 
 test('lead search, simulated call and two-tap outcome', async ({ page }) => {
@@ -21,6 +21,18 @@ test('reserved B2C contact is blocked', async ({ page }) => {
   await page.getByRole('button', { name: /Eksempelkontakt/ }).click()
   await expect(page.getByRole('button', { name: 'Simuler samtale' })).toBeDisabled()
   await expect(page.getByText('Reservert mot telefonsalg – mangler gyldig samtykke')).toBeVisible()
+})
+
+test('lead board groups contacts and list view preserves search and selection', async ({ page }, testInfo) => {
+  await page.getByRole('button', { name: 'Se hele listen' }).click()
+  await expect(page.getByRole('button', { name: 'Tavle', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.board-new')).toContainText('Fjord & Form')
+  await expect(page.locator('.board-blocked')).toContainText('Eksempelkontakt')
+  await page.screenshot({ path: testInfo.outputPath('lead-board.png') })
+  await page.getByRole('button', { name: 'Liste', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Søk i leads' }).fill('Fjord')
+  await page.getByRole('button', { name: /Fjord & Form/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
 })
 
 test('sale is registered with exact server-style demo allocation', async ({ page }) => {

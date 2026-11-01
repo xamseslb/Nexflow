@@ -21,11 +21,12 @@ Se [krav og leveransestatus](docs/requirements.md) og [arkitektur](docs/architec
 Node 22.12+ (eller nyere kompatibel LTS) og Python 3.12 anbefales.
 
 ```powershell
-npm ci
-npm run dev
+npm.cmd ci --include=dev
+npm.cmd run dev
 ```
 
-Åpne adressen Vite viser og velg **Åpne demonstrasjon**. Ingen nøkler er nødvendige.
+Åpne http://127.0.0.1:8087 og velg **Åpne demonstrasjon**. Ingen nøkler er nødvendige.
+Frontend bruker fast port 8087 og stopper hvis porten er opptatt.
 Demoen nullstilles ved oppdatering eller prosjektbytte. Ikke skriv reelle personopplysninger i demoen.
 
 Backend, fra prosjektroten:
