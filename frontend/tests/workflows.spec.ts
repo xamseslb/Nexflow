@@ -62,3 +62,18 @@ test('layout fits viewport and dialog works on mobile', async ({ page }) => {
 test('overview visual review', async ({ page }, testInfo) => {
   await page.screenshot({ path: testInfo.outputPath('overview.png'), fullPage: true })
 })
+
+test('console status shortcuts filter leads and menu navigation clears the filter', async ({ page }) => {
+  await page.getByRole('button', { name: 'Møte booket: 1 leads. Vis i ringelisten' }).click()
+  await expect(page.locator('.board-card')).toHaveCount(1)
+  await expect(page.locator('.board-card')).toContainText('Vest Byggpartner')
+  await page.getByRole('button', { name: 'Alle leads', exact: true }).click()
+  await expect(page.locator('.board-card')).toHaveCount(7)
+  const menu = page.getByRole('button', { name: 'Åpne meny' })
+  if (await menu.isVisible()) await menu.click()
+  await page.getByRole('navigation').getByRole('button', { name: 'Oversikt', exact: true }).click()
+  await page.getByRole('button', { name: 'Solgt: 1 leads. Vis i ringelisten' }).click()
+  if (await menu.isVisible()) await menu.click()
+  await page.getByRole('navigation').getByRole('button', { name: 'Ringeliste', exact: true }).click()
+  await expect(page.locator('.board-card')).toHaveCount(7)
+})

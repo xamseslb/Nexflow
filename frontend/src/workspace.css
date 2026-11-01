@@ -1,10 +1,5 @@
 /* Compact CRM workspace: shared visual language for all application views. */
-@theme inline {
-  --color-primary: #315dcc;
-  --color-muted: #f2f5fa;
-  --color-muted-foreground: #65738a;
-  --color-border: #d9e0eb;
-}
+
 :root { --color-primary: #315dcc; --color-muted: #f2f5fa; --color-border: #d9e0eb; color: #273449; background: #eef2f8; font-size: 14px; }
 h1, h2, h3 { letter-spacing: -.015em; }
 h1 { font-size: 24px; font-weight: 650; }

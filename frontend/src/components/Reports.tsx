@@ -23,10 +23,10 @@ function BoxPlot({ title, data, currency = false }: { title: string; data: Distr
       <svg viewBox="0 0 520 110" role="img" aria-label={`${title}: median ${format(summary.median)}, fra ${format(summary.min)} til ${format(summary.max)}`}>
         {(() => {
           const x = (n: number) => summary.max === summary.min ? 260 : 30 + (n - summary.min) / (summary.max - summary.min) * 460
-          return <g><line x1={x(summary.min)} x2={x(summary.max)} y1="50" y2="50" stroke="#647766" strokeWidth="2" />
-            {[summary.min, summary.max].map((n, i) => <line key={i} x1={x(n)} x2={x(n)} y1="30" y2="70" stroke="#647766" strokeWidth="2" />)}
-            <rect x={x(summary.q1)} y="25" width={Math.max(2, x(summary.q3) - x(summary.q1))} height="50" fill="#dce8d7" stroke="#517550" />
-            <line x1={x(summary.median)} x2={x(summary.median)} y1="25" y2="75" stroke="#244e36" strokeWidth="3" />
+          return <g><line x1={x(summary.min)} x2={x(summary.max)} y1="50" y2="50" stroke="#667085" strokeWidth="2" />
+            {[summary.min, summary.max].map((n, i) => <line key={i} x1={x(n)} x2={x(n)} y1="30" y2="70" stroke="#667085" strokeWidth="2" />)}
+            <rect x={x(summary.q1)} y="25" width={Math.max(2, x(summary.q3) - x(summary.q1))} height="50" fill="#e1eafa" stroke="#426ccc" />
+            <line x1={x(summary.median)} x2={x(summary.median)} y1="25" y2="75" stroke="#2459c4" strokeWidth="3" />
           </g>
         })()}
       </svg>
@@ -63,9 +63,9 @@ export function Reports({ projectId, demo }: { projectId: string; demo: boolean 
     <form className="report-filters" onSubmit={filter}><label>Fra<input name="start" type="date" required defaultValue={report.period.start} disabled={demo} /></label><label>Til<input name="end" type="date" required defaultValue={report.period.end} disabled={demo} /></label><Button disabled={demo}>Vis periode</Button><span>Europe/Oslo · maksimalt 366 dager</span></form>
     <div className="stat-grid">{[['Fullførte samtalelogger', String(report.totals.calls)], ['Møter registrert', String(report.totals.meetings)], ['Salg registrert', String(report.totals.sales)], ['Registrert salgsverdi', money(report.totals.revenue_ore)]].map(([label, value]) => <div className="stat-card" key={label}><div className="stat-top">{label}</div><strong>{value}</strong><small>I valgt periode</small></div>)}</div>
     <div className="report-grid"><section className="panel report-panel"><div className="chart-heading"><h2>Utvikling over tid</h2><label>Måltall<select aria-label="Måltall i diagram" value={metric} onChange={e => setMetric(e.target.value as Metric)}>{Object.entries(metricLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div><p>{metricLabels[metric]} per dag{metric === 'calls' ? ", inkludert «ikke svar»" : ""}.</p><svg viewBox="0 0 600 190" role="img" aria-label={`${metricLabels[metric]} per dag. Eksakte tall finnes i datatabellen nedenfor.`}>
-      {[0, 1, 2].map(i => <line key={i} x1="25" x2="585" y1={20 + i * 70} y2={20 + i * 70} stroke="#e4e9e0" />)}
-      <text x="25" y="12" fontSize="10" fill="#63705d">{metric === 'revenue_ore' ? money(maxCalls) : maxCalls.toLocaleString('nb-NO')}</text><polyline fill="none" stroke="#346649" strokeWidth="3" strokeLinejoin="round" points={report.series.map((day, i) => `${25 + i / Math.max(1, report.series.length - 1) * 560},${160 - day[metric] / maxCalls * 140}`).join(' ')} />
-      <text x="25" y="185" fontSize="11" fill="#63705d">{report.period.start}</text><text x="585" y="185" textAnchor="end" fontSize="11" fill="#63705d">{report.period.end}</text>
+      {[0, 1, 2].map(i => <line key={i} x1="25" x2="585" y1={20 + i * 70} y2={20 + i * 70} stroke="#e2e6ee" />)}
+      <text x="25" y="12" fontSize="10" fill="#526071">{metric === 'revenue_ore' ? money(maxCalls) : maxCalls.toLocaleString('nb-NO')}</text><polyline fill="none" stroke="#2459c4" strokeWidth="3" strokeLinejoin="round" points={report.series.map((day, i) => `${25 + i / Math.max(1, report.series.length - 1) * 560},${160 - day[metric] / maxCalls * 140}`).join(' ')} />
+      <text x="25" y="185" fontSize="11" fill="#526071">{report.period.start}</text><text x="585" y="185" textAnchor="end" fontSize="11" fill="#526071">{report.period.end}</text>
     </svg></section><section className="panel report-panel"><h2>Pipeline akkurat nå</h2><p>Nåværende leadstatus. Dette er ikke en historisk salgstrakt.</p><div className="pipeline-bars">{report.pipeline.map(stage => <div key={stage.stage}><span>{labels[stage.stage]}</span><div><i style={{ width: `${stage.count / maxPipeline * 100}%` }} /></div><strong>{stage.count}</strong></div>)}</div></section></div>
     <section className="panel report-panel cohort-panel"><div><h2>Fra nytt lead til salg</h2><p>Av {report.cohort.leads} leads opprettet i perioden har {report.cohort.sold} minst ett registrert salg før periodens slutt. Direkte salg er inkludert.</p></div><strong>{report.cohort.conversion_percent === null ? '—' : `${report.cohort.conversion_percent.toLocaleString('nb-NO')} %`}</strong></section>
     <div className="report-grid"><BoxPlot title="Fordeling av salgsbeløp" data={report.distributions.sale_amount} currency /><BoxPlot title="Tid fra lead til registrert salg" data={report.distributions.hours_to_sale} /></div>

@@ -22,15 +22,16 @@ test('login is accessible, password visibility works and credentials stay local'
   await expect(password).toHaveValue('')
 })
 
-test('all workspace pages remain usable across navigation', async ({ page }) => {
+test('all workspace pages remain usable across navigation', async ({ page }, testInfo) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
-  for (const name of ['Møter', 'Salg og opptjening', 'Prosjekter', 'Ringeliste', 'Oversikt']) {
+  for (const name of ['Møter', 'Salg og opptjening', 'Prosjekter', 'Ringeliste', 'Oppfølging', 'Rapporter', 'Oversikt']) {
     const menu = page.getByRole('button', { name: 'Åpne meny' })
     if (await menu.isVisible()) await menu.click()
     await page.locator('nav').getByRole('button', { name: new RegExp(name) }).click()
     await expect(page.locator('nav [aria-current="page"]')).toContainText(name)
     await expect(page.locator('main h1')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`workspace-${name}.png`), fullPage: true })
   }
 })
