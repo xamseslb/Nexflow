@@ -1,89 +1,59 @@
-import { ArrowRight, ArrowUpRight, CalendarDays, CheckCheck, CircleCheck, ListTodo, Phone, Plus, ShieldCheck, Wallet } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronRight, Phone, PhoneCall, TrendingUp, Wallet } from 'lucide-react'
 import { money } from '@/lib/utils'
-import type { Lead, Meeting, Project, Sale } from '@/lib/api'
+import type { Lead, Meeting, Sale } from '@/lib/api'
 
 type Props = {
-  project: Project
   leads: Lead[]
   meetings: Meeting[]
   sales: Sale[]
-  demo: boolean
-  calls: number
-  operator: boolean
   onLeads: (filter?: string) => void
   onMeetings: () => void
   onSales: () => void
-  onTasks: () => void
-  onNewLead: () => void
 }
 
-export function ConsoleOverview({ project, leads, meetings, sales, demo, calls, operator, onLeads, onMeetings, onSales, onTasks, onNewLead }: Props) {
-  const ready = leads.filter(lead => !lead.blocked && ['new', 'callback'].includes(lead.status)).length
-  const callbacks = leads.filter(lead => lead.status === 'callback' && !lead.blocked).length
-  const sold = leads.filter(lead => lead.status === 'sold').length
-  const share = leads.length ? Math.round(sold / leads.length * 100) : 0
-  const upcoming = meetings.filter(meeting => meeting.outcome === 'booked' && new Date(meeting.starts_at) >= new Date()).sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-  const total = sales.reduce((sum, sale) => sum + sale.amount_ore, 0)
-  const approved = sales.filter(sale => sale.status === 'approved').reduce((sum, sale) => sum + sale.amount_ore, 0)
-  const stages = [
-    { label: 'Nye leads', status: 'new', count: leads.filter(l => !l.blocked && l.status === 'new').length },
-    { label: 'Ring tilbake', status: 'callback', count: callbacks },
-    { label: 'Møte booket', status: 'meeting', count: leads.filter(l => !l.blocked && l.status === 'meeting').length },
-    { label: 'Solgt', status: 'sold', count: sold },
-  ]
-  const max = Math.max(1, ...stages.map(stage => stage.count))
+const day = new Intl.DateTimeFormat('nb-NO', { day: 'numeric', month: 'short' })
+const hour = new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' })
 
-  return <div className="console-overview">
-    <div className="console-rail">
-      <div className="console-section-label"><span>Arbeidsdagen</span><span>01 / STATUS</span></div>
-      <div className="console-metrics">
-        <button className="console-card compact-metric" onClick={() => onLeads('available')}><CircleCheck size={19} className="status-green" /><strong>{ready}</strong><span>Klar til oppfølging</span><ArrowUpRight size={14} /></button>
-        <button className="console-card compact-metric" onClick={() => onLeads('callback')}><Phone size={18} /><strong>{callbacks}</strong><span>Ring tilbake</span><ArrowUpRight size={14} /></button>
-      </div>
-      <section className="console-card progress-card">
-        <div className="console-card-title"><h2>Fra lead til salg</h2><CheckCheck size={17} /></div>
-        <div className="progress-value">{share}<span>%</span></div>
-        <p>{sold} av {leads.length} leads har status solgt</p>
-        <div className="console-progress" role="progressbar" aria-label="Andel leads med status solgt" aria-valuenow={share} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${share}%` }} /></div>
-        <div className="progress-caption"><span>Nåværende prosjekt</span><span>{leads.length} leads</span></div>
+export function ConsoleOverview({ leads, meetings, sales, onLeads, onMeetings, onSales }: Props) {
+  const upcoming = meetings.filter(m => m.outcome === 'booked' && Date.parse(m.starts_at) >= Date.now())
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+  const count = (status: string) => leads.filter(l => !l.blocked && l.status === status).length
+  const sold = count('sold')
+  const stages = [
+    { status: 'new', label: 'Nye leads', count: count('new') },
+    { status: 'callback', label: 'Ring tilbake', count: count('callback') },
+    { status: 'meeting', label: 'Møte booket', count: count('meeting') },
+    { status: 'sold', label: 'Solgt', count: sold },
+  ]
+  const max = Math.max(1, ...stages.map(s => s.count))
+  const approved = sales.filter(s => s.status === 'approved').reduce((sum, s) => sum + s.amount_ore, 0)
+  const metrics = [
+    { label: 'Klar til oppfølging', value: count('new') + count('callback'), icon: Phone, action: () => onLeads('available') },
+    { label: 'Ring tilbake', value: count('callback'), icon: PhoneCall, action: () => onLeads('callback') },
+    { label: 'Kommende møter', value: upcoming.length, icon: CalendarDays, action: onMeetings },
+    { label: 'Registrert salgsverdi', value: money(sales.reduce((sum, s) => sum + s.amount_ore, 0)), icon: Wallet, action: onSales },
+  ]
+
+  return <div className="daybook">
+    <div className="day-metrics">{metrics.map(({ label, value, icon: Icon, action }) =>
+      <button key={label} onClick={action}><span><Icon size={16} />{label}</span><strong>{value}</strong><ChevronRight size={16} /></button>
+    )}</div>
+    <div className="day-panels">
+      <section className="day-panel"><header><h2>Leadstatus</h2><button onClick={() => onLeads()}>Åpne ringelisten <ArrowRight size={15} /></button></header>
+        <div className="console-pipeline">{stages.map(stage =>
+          <button key={stage.status} className={'pipeline-stage pipeline-stage-' + stage.status} onClick={() => onLeads(stage.status)}
+            aria-label={stage.label + ': ' + stage.count + ' leads. Vis i ringelisten'}>
+            <span className="pipeline-label">{stage.label}</span><span className="stage-track" aria-hidden="true"><span style={{ width: stage.count / max * 100 + '%' }} /></span><strong>{stage.count}</strong>
+          </button>
+        )}</div>
+        <footer><TrendingUp size={16} />{sold} av {leads.length} leads har status solgt · {leads.length ? Math.round(sold / leads.length * 100) : 0} %</footer>
       </section>
-      <section className="console-card shortcuts-card">
-        <div className="console-card-title"><h2>Hurtigvalg</h2><ArrowUpRight size={16} /></div>
-        <div className="console-shortcuts">
-          <button onClick={() => onLeads('available')}><Phone size={19} /><span>Ringeliste</span></button>
-          <button onClick={onMeetings}><CalendarDays size={19} /><span>Møter</span></button>
-          <button onClick={onSales}><Wallet size={19} /><span>Salg</span></button>
-          {operator && <><button aria-label="Opprett nytt lead" onClick={onNewLead}><Plus size={19} /><span>Nytt lead</span></button><button onClick={onTasks}><ListTodo size={19} /><span>Oppfølging</span></button></>}
-        </div>
+      <section className="day-panel"><header><h2>Neste møter</h2><button onClick={onMeetings}>Se alle møter <ArrowRight size={15}/></button></header>
+        {upcoming.slice(0, 2).map(m => <div key={m.id} className="day-appointment"><time dateTime={m.starts_at}>{hour.format(new Date(m.starts_at))}<small>{day.format(new Date(m.starts_at))}</small></time>
+          <div><strong>{leads.find(l => l.id === m.lead_id)?.company || 'Kvalifiseringsmøte'}</strong><small>Kvalifiseringsmøte</small></div></div>)}
+        {!upcoming.length && <p className="day-empty">Ingen kommende møter. Du kan booke et møte fra kundens leadkort.</p>}
+        <footer><Wallet size={16} />Godkjent salgsverdi <strong>{money(approved)}</strong></footer>
       </section>
-      <div className="console-rail-note"><ShieldCheck size={16} /><span>Tilgang styrt av rolle og prosjekt</span></div>
-    </div>
-    <div className="console-stage">
-      <section className="console-card pipeline-workspace">
-        <div className="console-card-title"><span className="console-section-label">02 / PROSJEKTSTATUS</span><span className="project-status"><i />{project.active ? 'Aktivt prosjekt' : 'Pauset prosjekt'}</span></div>
-        <div className="pipeline-intro"><div><h2>{project.name}</h2><p>{project.description || 'Leads, møter og salg samlet på ett sted.'}</p></div><span className="project-kind">{project.kind.toUpperCase()}</span></div>
-        <div className="console-pipeline" aria-label="Fordeling av leadstatus">
-          {stages.map((stage, index) => <button key={stage.status} className={`pipeline-stage pipeline-stage-${stage.status}`} onClick={() => onLeads(stage.status)} aria-label={`${stage.label}: ${stage.count} leads. Vis i ringelisten`}>
-            <span className="pipeline-step">0{index + 1}<ArrowUpRight size={15} /></span><strong>{stage.count}</strong><span className="pipeline-label">{stage.label}</span>
-            <div className="pipeline-track" aria-hidden="true"><span style={{ height: `${stage.count / max * 100}%` }} /></div>
-          </button>)}
-        </div>
-        <div className="pipeline-bottom"><span>Leadstatus akkurat nå · ingen periodefilter</span><button onClick={() => onLeads('available')}>Åpne ringelisten <ArrowRight size={16} /></button></div>
-      </section>
-      <div className="console-bottom-grid">
-        <section className="console-card console-agenda">
-          <div className="console-card-title"><h2>Neste på agendaen</h2><button aria-label="Vis alle møter" onClick={onMeetings}><ArrowUpRight size={18} /></button></div>
-          {upcoming.slice(0, 2).map(meeting => <button className="console-meeting" key={meeting.id} onClick={onMeetings}><span className="console-date"><strong>{new Date(meeting.starts_at).getDate()}</strong><span>{new Intl.DateTimeFormat('nb-NO', { month: 'short' }).format(new Date(meeting.starts_at))}</span></span><span><strong>{leads.find(lead => lead.id === meeting.lead_id)?.company || 'Kvalifiseringsmøte'}</strong><small>{new Intl.DateTimeFormat('nb-NO', { hour: '2-digit', minute: '2-digit' }).format(new Date(meeting.starts_at))} · Kvalifiseringsmøte</small></span><ArrowUpRight size={15} /></button>)}
-          {!upcoming.length && <div className="console-empty"><CalendarDays size={22} /><p>Ingen kommende møter</p><span>Book et møte fra et lead i ringelisten.</span></div>}
-          <div className="console-card-foot"><span>{upcoming.length} kommende møter</span><button onClick={onMeetings}>Se alle møter <ArrowRight size={14} /></button></div>
-        </section>
-        <section className="console-card console-finance">
-          <div className="console-card-title"><h2>Registrert salgsverdi</h2><button aria-label="Vis salg og opptjening" onClick={onSales}><ArrowUpRight size={18} /></button></div>
-          <strong className="console-money">{money(total)}</strong><p>Eks. mva · {sales.length} registrerte salg</p>
-          <div className="finance-breakdown"><span>Godkjent salgsverdi</span><strong>{money(approved)}</strong></div>
-          <div className="console-card-foot"><span>Salgsverdi, ikke utbetaling</span>{demo && <span>{calls} samtaler i demoøkten</span>}</div>
-        </section>
-      </div>
     </div>
   </div>
 }

@@ -149,3 +149,26 @@ def test_manager_report_executes_postgresql_aggregates(tenant_data):
         assert result["totals"]["revenue_ore"] == 0
         assert result["cohort"]["conversion_percent"] == 0
         assert result["distributions"]["sale_amount"]["available"] is False
+
+def test_call_history_scopes_notes_and_excludes_unfinished_calls(tenant_data):
+    from datetime import datetime, timezone
+    from app.api import call_history
+    from app.models import Call
+
+    engine, users, partners, projects, lead_id = tenant_data
+    with Session(engine) as db, db.begin():
+        for seller in users[:2]:
+            db.add(Call(project_id=projects[0], partner_id=partners[0], lead_id=lead_id,
+                        user_id=seller, completed_at=datetime.now(timezone.utc),
+                        outcome="answered", note=str(seller), authorization={}))
+        db.add(Call(project_id=projects[0], partner_id=partners[0], lead_id=lead_id,
+                    user_id=users[0], authorization={}))
+    with as_user(engine, users[0]) as db:
+        assert [row["note"] for row in call_history(projects[0], lead_id, db)] == [str(users[0])]
+    with as_user(engine, users[2]) as db, pytest.raises(HTTPException) as error:
+        call_history(projects[0], lead_id, db)
+    assert error.value.status_code == 403
+    with Session(engine) as db, db.begin():
+        db.get(Membership, (projects[0], users[0])).role = "leader"
+    with as_user(engine, users[0]) as db:
+        assert {row["note"] for row in call_history(projects[0], lead_id, db)} == set(map(str, users[:2]))

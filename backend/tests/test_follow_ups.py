@@ -25,7 +25,7 @@ def context():
 def task(body, user, **kwargs):
     return SimpleNamespace(id=uuid4(), lead_id=body.lead_id, title=body.title, note=body.note,
         due_at=body.due_at, status=kwargs.get("status", "open"), assignee_id=kwargs.get("assignee_id", user),
-        created_at=datetime.now(timezone.utc), completed_at=None)
+        created_at=datetime.now(timezone.utc), completed_at=None, initial_assignee_id=None, created_by=user)
 
 
 def test_retried_creation_returns_existing_task_without_duplicate_audit(context):
@@ -129,6 +129,15 @@ def test_task_schema_rejects_naive_dates_and_untrusted_assignment(context):
     with pytest.raises(ValidationError):
         FollowUpCreate(**(payload | {"due_at": "2026-11-01T10:00:00"}))
     with pytest.raises(ValidationError):
-        FollowUpCreate(**(payload | {"assignee_id": uuid4()}))
+        FollowUpCreate(**(payload | {"created_by": uuid4()}))
     with pytest.raises(ValidationError):
         FollowUpCreate(**(payload | {"title": "   "}))
+
+
+def test_seller_cannot_delegate_to_another_member(context):
+    db, body, _, project, _ = context
+    body.assignee_id = uuid4()
+    with pytest.raises(HTTPException) as error:
+        create_follow_up(project, body, db)
+    assert error.value.status_code == 403
+    db.add.assert_not_called()

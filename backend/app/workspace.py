@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .api import Db, MANAGERS, OPERATORS, audit, lead_for, now, project_access
 from .models import AuditEvent, Call, FollowUp, Meeting, Membership, Sale
 from .reporting import assemble_report, distribution_summary, report_window
-from .schemas import FollowUpCreate, FollowUpUpdate
+from .schemas import FollowUpAssignment, FollowUpCreate, FollowUpUpdate
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}")
 
@@ -92,13 +92,18 @@ def follow_ups(project_id: UUID, status: Literal["open", "done", "cancelled", "a
 @router.post("/follow-ups", status_code=201)
 def create_follow_up(project_id: UUID, body: FollowUpCreate, db: Session = Db):
     project = project_access(db, project_id, OPERATORS)
+    uid = db.info["user_id"]
+    assignee = body.assignee_id or uid
+    if assignee != uid:
+        project_access(db, project_id, MANAGERS)
     # Serializes duplicate delivery; the uniqueness constraint is a second guard.
     db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                {"key": f"follow-up:{project_id}:{db.info['user_id']}:{body.idempotency_key}"})
     existing = db.scalar(select(FollowUp).where(FollowUp.project_id == project_id,
         FollowUp.created_by == db.info["user_id"], FollowUp.idempotency_key == body.idempotency_key))
     if existing:
-        if (existing.lead_id, existing.title, existing.note, existing.due_at) != (body.lead_id, body.title, body.note, body.due_at):
+        original_owner = existing.initial_assignee_id or existing.created_by
+        if (existing.lead_id, existing.title, existing.note, existing.due_at, original_owner) != (body.lead_id, body.title, body.note, body.due_at, assignee):
             raise HTTPException(409, "Nøkkelen er allerede brukt til en annen oppgave")
         return task_payload(existing, now())
     lead = lead_for(db, project_id, body.lead_id)
@@ -106,11 +111,35 @@ def create_follow_up(project_id: UUID, body: FollowUpCreate, db: Session = Db):
         raise HTTPException(409, "Velg et åpent lead i et aktivt prosjekt")
     if body.due_at <= now():
         raise HTTPException(422, "Velg et fremtidig tidspunkt for oppfølging")
-    task = FollowUp(project_id=project.id, partner_id=project.partner_id, assignee_id=db.info["user_id"],
-                    created_by=db.info["user_id"], status="open", **body.model_dump())
+    if assignee != uid:
+        require_assignee_access(db, project_id, lead.id, assignee)
+    task = FollowUp(project_id=project.id, partner_id=project.partner_id, assignee_id=assignee,
+                    initial_assignee_id=assignee, created_by=uid, status="open", **body.model_dump(exclude={"assignee_id"}))
     db.add(task)
     db.flush()
     audit(db, project, "follow_up.created", task.id)
+    return task_payload(task, now())
+
+
+def require_assignee_access(db: Session, project_id: UUID, lead_id: UUID, assignee: UUID):
+    allowed = db.scalar(text("SELECT hub_private.task_assignee_allowed(:project, :lead, :person)"),
+                        {"project": project_id, "lead": lead_id, "person": assignee})
+    if not allowed:
+        raise HTTPException(422, "Velg en aktiv medarbeider med tilgang til dette leadet")
+
+
+@router.patch("/follow-ups/{task_id}/assignee")
+def reassign_follow_up(project_id: UUID, task_id: UUID, body: FollowUpAssignment, db: Session = Db):
+    project = project_access(db, project_id, MANAGERS)
+    task = db.scalar(select(FollowUp).where(FollowUp.project_id == project_id, FollowUp.id == task_id).with_for_update())
+    if not task:
+        raise HTTPException(404, "Oppgaven finnes ikke")
+    if not project.active or task.status != "open":
+        raise HTTPException(409, "Velg en åpen oppgave i et aktivt prosjekt")
+    require_assignee_access(db, project_id, task.lead_id, body.assignee_id)
+    if task.assignee_id != body.assignee_id:
+        task.assignee_id = body.assignee_id
+        audit(db, project, "follow_up.assigned", task.id, {"assignee_id": str(body.assignee_id)})
     return task_payload(task, now())
 
 

@@ -1,4 +1,4 @@
-# Hub CRM
+# Nexflow CRM
 
 Mobil-først CRM for partnerhuben. React + TypeScript + Vite + Tailwind + shadcn/ui,
 FastAPI + Pydantic + SQLAlchemy + Alembic, Supabase PostgreSQL + Auth + RLS.
@@ -11,6 +11,8 @@ Arbeidsflate med oversikt, prosjektbytte, søk, leadkort, ringetillatelse, samta
 møtebooking, enkel produktbasert salgsfordeling, ledergodkjenning og CSV-eksport.
 Demonstrasjonen bruker kun fiktive data i minnet og utfører ingen anrop eller utsendinger.
 Ekte bruk krever Supabase og migrering. Ingen auth-bypass eller lokal produksjonsdatabase.
+
+Åpne **Ringekøer** for å opprette Hot-, Cold- og Winback-lister, tildele en selger og flytte kontakter. **Åpne liste** reserverer en kontakt. Selgeren starter anropet manuelt og lagrer utfall og notat før neste kontakt vises. **Kunder** samler salgstrinn, oppfølging, møter og samtalehistorikk.
 
 Rapporter, diagrammer og oppfølgingskø er beskrevet i [rapporter og oppfølging](docs/reporting-and-follow-ups.md).
 
@@ -35,8 +37,8 @@ Backend, fra prosjektroten:
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r backend/requirements.lock
 .\.venv\Scripts\python -m pip install --no-deps -e backend
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
+if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend/.env.local }
 ```
 
 Fyll inn egne verdier lokalt. Frontend får kun Supabase-URL og publishable key.
@@ -70,6 +72,8 @@ Sett passord sikkert uten å sjekke dem inn. `DATABASE_URL` skal bruke `hub_runt
 `WORKER_DATABASE_URL` skal bruke `hub_jobs_runtime`. Bruk Supabase-forbindelsen som
 støtter disse rollene (direkte forbindelse eller passende session pooler), med TLS.
 Ikke gi runtime-rollene medlemskap i postgres, service_role eller migreringsrollen.
+
+Migreringene oppretter den private bøtten `nexflow-sale-documents` når Supabase Storage er installert. Systemet knytter hver fil til et eksisterende salg og kontrollerer lesing og opplasting mot aktivt medlemskap og selgerrolle. Sett av en test med to brukerøkter for å prøve faktiske filoperasjoner i Supabase.
 
 Opprett brukere via Supabase Auth. Første partner, prosjekt, produkt og medlemskap legges
 inn administrativt; selvbetjent onboarding er fase 3. Medlemskap refererer til `auth.users.id`.

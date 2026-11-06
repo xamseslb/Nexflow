@@ -16,8 +16,9 @@ Alle stier har prefikset `/api/v1/projects/{project_id}` og krever et gyldig Sup
 |---|---|---|
 | GET | `/reports?start=2026-10-01&end=2026-10-31&timezone=Europe/Oslo` | Måltall, daglig serie, pipeline, konvertering og boksplott |
 | GET | `/follow-ups?status=open&overdue=false&limit=50&offset=0` | Oppgavekø, eventuelt med `lead_id` |
-| POST | `/follow-ups` | Opprett egen oppgave på et åpent lead |
+| POST | `/follow-ups` | Opprett egen oppgave, eller tildel den som leder til en medarbeider med tilgang til leadet |
 | PATCH | `/follow-ups/{task_id}` | Avslutt med `done` eller `cancelled` |
+| PATCH | `/follow-ups/{task_id}/assignee` | Tildel en åpen oppgave til en annen medarbeider som leder |
 | GET | `/leads/{lead_id}/activity?limit=30&offset=0` | Tidslinje med handlingstype og tidspunkt |
 
 Eksempel på oppretting (UUID-er erstattes med faktiske verdier):
@@ -32,7 +33,7 @@ Eksempel på oppretting (UUID-er erstattes med faktiske verdier):
 }
 ```
 
-Oppgaven tildeles den verifiserte brukeren. En klient kan ikke oppgi et annet prosjekt, en partner eller en ansvarlig i kroppen. Nøkkelen må gjenbrukes ved nettverksretry av samme oppretting. Samme nøkkel med endret innhold gir 409. Gjentatt avslutning med samme status er idempotent; en allerede avsluttet oppgave kan ikke bytte sluttilstand. Det sendes ingen e-post eller push. Forfalte åpne oppgaver vises ved lesing av køen.
+Uten `assignee_id` tildeles oppgaven den innloggede brukeren. Med en annen ansvarlig krever API-et leder- eller administratorrolle og validerer at mottakeren er aktiv og kan åpne leadet i prosjektet. Nøkkelen må gjenbrukes ved nettverksretry av samme oppretting. Samme nøkkel med endret innhold gir 409. Gjentatt avslutning med samme status er idempotent; en allerede avsluttet oppgave kan ikke bytte sluttilstand. Det sendes ingen e-post eller push. Forfalte åpne oppgaver vises ved lesing av køen.
 
 Køen returnerer `items`, `has_more`, `offset` og `truncated`. Sidestørrelsen er maksimalt 100 og offset maksimalt 10 000. Ved visningsgrensen signaliseres `truncated`; avgrens søket. Aktivitet har samme sidekontrakt. Tidslinjen returnerer aldri rå auditdetaljer, salgsfordeling, notater eller tokenopplysninger. Relaterte salg og oppgaver følger sine egne RLS-regler.
 
@@ -60,11 +61,20 @@ Demooppgaver ligger kun i komponentens minne og nullstilles når oppfølgingssid
 
 ## Databaseoppsett og kontroll i neste steg
 
-Migrering **0002** legger til `hub.follow_ups`, sammensatte fremmednøkler, status-/idempotensbegrensninger, RLS og rapportindekser. Tidligere migrering 0001 er uendret. Ingen migrering er kjørt mot en faktisk database under denne leveransen.
+Migrering **0002** oppretter `hub.follow_ups` og rapportindeksene. **0006** utvider tilgangsreglene slik at en leder kan delegere en åpen oppgave til en aktiv medarbeider med tilgang til leadet. Kjør alle migreringene i rekkefølge før du bruker lederporteføljen.
 
 1. Bruk den separate disponibel-testdatabaseflyten i README og CI, med `backend/tests/bootstrap_postgres.sql` før første migrering.
 2. Fra `backend`: sett `MIGRATION_DATABASE_URL` gjennom sikker konfigurasjon og kjør `../.venv/bin/python -m alembic upgrade head` med administrativ migreringsrolle.
-3. Kjør `.venv/bin/python -m pytest backend/tests -q` fra roten med `TEST_DATABASE_URL` til den migrerte disponible databasen. De syv PostgreSQL-testene skal da kjøre, ikke hoppe over. Nye tester dekker oppgaveisolasjon, samtidige idempotente opprettinger og faktisk PostgreSQL-rapportaggregering.
+3. Kjør `.venv/bin/python -m pytest backend/tests -q` fra roten med `TEST_DATABASE_URL` til den migrerte disponible databasen. Kontroller at PostgreSQL-testene blir kjørt. Nye tester dekker oppgaveisolasjon, samtidige idempotente opprettinger og faktisk PostgreSQL-rapportaggregering.
 4. Koble API-et til den begrensede runtime-rollen og kontroller to prosjekter og to selgere. Kontroller rapporter som leder og avvisning som partner/selger. Bekreft at en selger ikke kan lese eller avslutte en annens oppgaver.
 
 Kontroll uten database: Python-enhetstester, autentiseringskrav for API, TypeScript/produksjonsbygg, Playwright på desktop/mobil og offline-generering av hele migrerings-SQL-en. Dette verifiserer ikke kjørte migreringer, PostgreSQL-privilegier, RLS eller faktisk SQL-ytelse. Live API krever migrert database; dette må fullføres før reelle data tas i bruk.
+
+## Lederens salgsportefølje
+
+`GET /api/v1/portfolio/sales` summerer alle registrerte salg i prosjektene der brukeren har aktivt leder- eller administratormedlemskap. Uten prosjektfilter dekker tallene disse prosjektene samlet. Filtrene `project_id`, `kind` (B2B/B2C), `project_type` og `team` kan kombineres. `offset` gjelder salgsradene. Summer og sammenligning per prosjekt bruker hele utvalget.
+
+- **Leads** teller kontakter. Med teamfilter brukes dagens team for ringelistens ansvarlige. Kontakter uten listetildeling telles når alle team er valgt.
+- **Samtaler** teller fullførte samtalelogger, også «ikke svar». **Møter** teller registrerte møter. Teamfilteret bruker samtaleeierens eller bookerens nåværende aktive prosjektmedlemskap.
+- **Kjøpere** teller ulike leads med registrert salg, slik at flere salgsrader på samme kundecase gir én kjøper. **Salg og omsetning** bruker salgsradene i FastAPI. Beløp er i øre.
+- Kjøpere, salg og omsetning følger teamet som databasen lagret ved salget. Et senere teambytte flytter aktivitetsmålingene til dagens team, mens salget fortsatt inngår i teamets historiske tall. Eldre salg uten lagret team inngår når alle team er valgt.

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     migration_database_url: str = ""
     worker_database_url: str = ""
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origins: list[str] = ["http://localhost:8087", "http://127.0.0.1:8087"]
 
 
 @lru_cache

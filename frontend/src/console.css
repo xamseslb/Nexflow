@@ -93,18 +93,20 @@ button { transition: background-color .15s, border-color .15s; }
 .pipeline-intro h2 { font-size: 26px; font-weight: 400; color: #202939; letter-spacing: -.7px; }
 .pipeline-intro p { color: #526071; font-size: 13px; margin-top: 7px; }
 .project-kind { border: 1px solid #d5dbe4; border-radius: 16px; padding: 5px 10px; color: #526071; font-size: 13px; }
-.console-pipeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.pipeline-stage { padding: 0 22px 0 0; margin-right: 22px; border-right: 1px solid #e8ecf2; text-align: left; min-width: 0; display: flex; flex-direction: column; }
-.pipeline-stage:last-child { margin: 0; padding: 0; border: 0; }
-.pipeline-step { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #526071; }
-.pipeline-stage:hover .pipeline-step { color: #344054; }
-.pipeline-stage>strong { font-weight: 600; font-size: 48px; line-height: 1.3; margin-top: 14px; letter-spacing: -1.7px; }
-.pipeline-label { font-size: 13px; color: #344054; white-space: nowrap; }
-.pipeline-track { height: 84px; margin-top: 25px; position: relative; background: repeating-linear-gradient(to top, #e8ecf2 0, #e8ecf2 1px, transparent 1px, transparent 28px); display: flex; align-items: flex-end; }
-.pipeline-track>span { width: 100%; min-height: 0; background: #d5dbe4; border-radius: 5px 5px 0 0; border-top: 2px solid #98a2b3; }
-.pipeline-stage-callback .pipeline-track>span { background: #e8ecf2; border-color: #98a2b3; }
-.pipeline-stage-meeting .pipeline-track>span { background: #dce6e6; border-color: #98a2b3; }
-.pipeline-stage-sold .pipeline-track>span { background: #d5dbe4; border-color: #526071; }
+.console-pipeline { display: flex; flex-direction: column; gap: 2px; }
+.console-pipeline .pipeline-stage {
+  display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(3rem, 2.5fr) 2ch;
+  align-items: center; gap: 16px; min-height: 44px; padding: 6px; margin: 0;
+  border: 0; border-radius: 5px; cursor: pointer; text-align: left; min-width: 0;
+}
+.pipeline-stage:hover, .pipeline-stage:focus-visible { background: #f0f4fa; }
+.console-pipeline .pipeline-label { margin: 0; font-size: 14px; }
+.console-pipeline .pipeline-stage > strong {
+  grid-column: 3; grid-row: 1; margin: 0; font-size: 16px; letter-spacing: 0;
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.stage-track { grid-column: 2; grid-row: 1; height: 7px; background: #edf1f6; border-radius: 2px; }
+.stage-track > span { display: block; height: 100%; background: #4770ba; border-radius: inherit; }
 .pipeline-bottom { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 21px 0; margin-top: 8px; font-size: 13px; color: #526071; }
 .pipeline-bottom button { display: inline-flex; align-items: center; gap: 12px; font-size: 13px; color: #202939; padding: 9px 0 9px 12px; }
 .console-bottom-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; }
@@ -198,13 +200,8 @@ button { transition: background-color .15s, border-color .15s; }
 .page-heading .eyebrow { letter-spacing: .8px; font-size: 12px; }
 .pipeline-intro h2 { font-size: 25px; font-weight: 600; }
 .compact-metric span, .pipeline-label { font-size: 14px; color: #344054; }
-.pipeline-step { color: #526071; }
 .progress-card>p, .console-finance>p { font-size: 13px; }
 .console-progress>span { background: #426ccc; }
-.pipeline-track>span { background: #7c9bdd; border-color: #426ccc; }
-.pipeline-stage-callback .pipeline-track>span { background: #d8b164; border-color: #a57522; }
-.pipeline-stage-meeting .pipeline-track>span { background: #9b8aca; border-color: #7761b0; }
-.pipeline-stage-sold .pipeline-track>span { background: #7db5a0; border-color: #368368; }
 .pipeline-bottom button, .console-card-foot button, .text-link { color: #194aa9; font-weight: 600; }
 .console-shortcuts button { background: #f3f5f8; border-color: #dce2ea; color: #344054; min-height: 74px; }
 .console-shortcuts button:hover { background: #e8effd; border-color: #b7c9ef; color: #194aa9; }
@@ -250,7 +247,7 @@ button { transition: background-color .15s, border-color .15s; }
 .console-rail-note { font-size: 12px; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-color: #2459c4; }
 @media (min-width: 1600px) { .app-shell { padding: 0 42px; } .console-header { gap: 45px; } .console-nav .nav-item { padding-inline: 20px; } }
-@media (max-width: 1380px) { .console-header { gap: 20px; } .console-header-tools { gap: 6px; } .console-nav .nav-item { padding-inline: 10px; font-size: 13px; } .console-identity, .notification-tool, .brand-sub { display: none; } .pipeline-stage { margin-right: 14px; padding-right: 14px; } .console-bottom-grid { gap: 12px; } }
+@media (max-width: 1380px) { .console-header { gap: 20px; } .console-header-tools { gap: 6px; } .console-nav .nav-item { padding-inline: 10px; font-size: 13px; } .console-identity, .brand-sub { display: none; } .console-bottom-grid { gap: 12px; } }
 @media (max-width: 1120px) {
   .app-shell { padding-inline: 18px; }
   .console-header { min-height: 74px; }
@@ -267,8 +264,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .pipeline-workspace { padding: 20px 20px 0; }
   .pipeline-intro h2 { font-size: 23px; }
   .pipeline-intro { margin-block: 24px; }
-  .pipeline-stage { margin-right: 10px; padding-right: 10px; }
-  .pipeline-label { font-size: 13px; white-space: normal; min-height: 40px; }
   .pipeline-bottom { align-items: flex-start; flex-direction: column; gap: 2px; }
   .pipeline-bottom button { padding-left: 0; }
   .console-bottom-grid { grid-template-columns: 1fr; }
@@ -302,12 +297,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .progress-card { padding: 18px; }
   .console-progress { margin-top: 20px; }
   .console-rail-note { padding-block: 4px; }
-  .console-pipeline { gap: 0; }
   .pipeline-workspace { padding: 20px 16px 0; }
-  .pipeline-stage { margin-right: 10px; padding-right: 10px; }
-  .pipeline-stage>strong { font-size: 38px; }
-  .pipeline-label { font-size: 13px; white-space: normal; min-height: 40px; }
-  .pipeline-track { height: 60px; margin-top: 10px; }
   .pipeline-intro h2 { font-size: 23px; }
   .pipeline-intro p { line-height: 1.6; font-size: 13px; }
   .pipeline-intro { gap: 10px; }
@@ -331,3 +321,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .auth-header-note { display: none; }
   .auth-layout-login { padding: 45px 24px; }
 }
+
+.portfolio { margin-bottom: 16px; }
+.portfolio > summary { cursor: pointer; font-weight: 600; }
+.portfolio .report-filters { margin-block: 1rem; }
+.portfolio-sale { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 4px; border-top: 1px solid #dce2eb; text-align: left; }
+.portfolio-sale > span { flex: 1; }
+.portfolio-sale small { display: block; color: #526071; }
+.portfolio-sale:hover { background: #f2f6fc; }
+.portfolio-details > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e2e6ee; }
+.portfolio-details dt { color: #526071; }
+.portfolio-details dd { text-align: right; overflow-wrap: anywhere; }
+.access-members { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+@media (max-width: 1120px) { .console-nav { overflow-y: auto; } }

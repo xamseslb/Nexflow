@@ -30,6 +30,7 @@ class Project(Record, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     kind: Mapped[str] = mapped_column(String(10), default="b2b")
+    project_type: Mapped[str] = mapped_column(String(80), server_default="")
     move_rule: Mapped[str] = mapped_column(String(20), default="release")
 
 
@@ -39,6 +40,8 @@ class Membership(Base):
     project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     role: Mapped[str] = mapped_column(String(20))
+    team_name: Mapped[str] = mapped_column(String(80), default="")
+    strengths: Mapped[str] = mapped_column(String(300), default="")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -53,9 +56,24 @@ def scope_constraints(*extra):
             *extra, {"schema": "hub"})
 
 
+class CallList(Record, Scoped, Base):
+    __tablename__ = "call_lists"
+    __table_args__ = scope_constraints(
+        CheckConstraint("category IN ('hot','cold','winback')"),
+        UniqueConstraint("project_id", "name"),
+        ForeignKeyConstraint(["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+    )
+    name: Mapped[str] = mapped_column(String(100))
+    category: Mapped[str] = mapped_column(String(10))
+    assignee_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+
+
 class Lead(Record, Scoped, Base):
     __tablename__ = "leads"
-    __table_args__ = scope_constraints(CheckConstraint("kind IN ('b2b','b2c')"), CheckConstraint("status IN ('new','callback','meeting','sold','declined')"))
+    __table_args__ = scope_constraints(CheckConstraint("kind IN ('b2b','b2c')"), CheckConstraint("status IN ('new','callback','meeting','sold','declined')"),
+        ForeignKeyConstraint(["call_list_id", "project_id", "partner_id"], ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"]))
+    call_list_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    queue_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     company: Mapped[str] = mapped_column(String(200))
     contact: Mapped[str] = mapped_column(String(200), default="")
     phone: Mapped[str] = mapped_column(String(30))
@@ -67,6 +85,8 @@ class Lead(Record, Scoped, Base):
     city: Mapped[str] = mapped_column(String(100), default="")
     source: Mapped[str] = mapped_column(String(200), default="manual")
     summary: Mapped[str] = mapped_column(Text, default="")
+    # Steps 1–7 are manually adjustable. The final stage comes from a registered sale.
+    pipeline_step: Mapped[int] = mapped_column(Integer, server_default="1")
     enrichment: Mapped[dict] = mapped_column(JSONB, default=dict)
     blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     reserved_by: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
@@ -108,6 +128,24 @@ class Call(Record, Scoped, Base):
     note: Mapped[str] = mapped_column(Text, default="")
     authorization: Mapped[dict] = mapped_column(JSONB)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    callback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class QualityFlag(Record, Scoped, Base):
+    __tablename__ = "quality_flags"
+    __table_args__ = scope_constraints(
+        ForeignKeyConstraint(["call_id", "project_id", "partner_id"],
+                             ["hub.calls.id", "hub.calls.project_id", "hub.calls.partner_id"]),
+        UniqueConstraint("call_id"),
+        ForeignKeyConstraint(["project_id", "reported_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+        ForeignKeyConstraint(["project_id", "reviewed_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+    )
+    call_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    reported_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    reason: Mapped[str] = mapped_column(String(1000))
+    reviewed_by: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(String(1000))
 
 
 class Product(Record, Scoped, Base):
@@ -127,6 +165,7 @@ class Sale(Record, Scoped, Base):
     product_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     seller_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     amount_ore: Mapped[int] = mapped_column(BigInteger)
+    team_at_sale: Mapped[str | None] = mapped_column(String(80))
     currency: Mapped[str] = mapped_column(String(3), default="NOK")
     status: Mapped[str] = mapped_column(String(30), default="registered")
     allocation: Mapped[dict] = mapped_column(JSONB)
@@ -181,6 +220,7 @@ class FollowUp(Record, Scoped, Base):
     )
     lead_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     assignee_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+    initial_assignee_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     created_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     title: Mapped[str] = mapped_column(String(200))
     note: Mapped[str] = mapped_column(Text, default="")

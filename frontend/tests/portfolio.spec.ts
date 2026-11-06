@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test'
+
+test('manager portfolio separates sales type and customer segment, filters revenue and opens sale', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
+  const menu = page.getByRole('button', { name: 'Åpne meny' })
+  if (await menu.isVisible()) await menu.click()
+  await page.getByRole('navigation').getByRole('button', { name: 'Rapporter' }).click()
+  const portfolio = page.getByRole('region', { name: 'Lederoversikt' })
+  await expect(portfolio).toContainText('1 registrert salg')
+  await expect(portfolio.getByRole('button', { name: /Kjøpende kunder/ }).locator('strong')).toHaveText('1')
+  await portfolio.getByRole('combobox', { name: 'Prosjekttype', exact: true }).selectOption('Møtebooking')
+  await expect(portfolio).toContainText('Ingen registrerte salg i dette utvalget.')
+  await portfolio.getByRole('combobox', { name: 'Prosjekttype', exact: true }).selectOption('Direktesalg')
+  await portfolio.getByRole('combobox', { name: 'Kundesegment', exact: true }).selectOption('b2c')
+  await expect(portfolio).toContainText('Ingen registrerte salg i dette utvalget.')
+  await portfolio.getByRole('combobox', { name: 'Kundesegment', exact: true }).selectOption('b2b')
+  await portfolio.getByRole('combobox', { name: 'Team', exact: true }).selectOption('Demoteam')
+  await portfolio.getByRole('button', { name: /Vis Digitale vekstpakker/ }).click()
+  await expect(portfolio.getByRole('combobox', { name: 'Prosjekt', exact: true })).toHaveValue('demo-1')
+  await expect(portfolio.getByRole('combobox', { name: 'Team', exact: true })).toHaveValue('Demoteam')
+  await portfolio.getByRole('button', { name: /Havblikk Studio/ }).click()
+  const detail = page.getByRole('dialog', { name: 'Havblikk Studio' })
+  await expect(detail).toContainText('Selgerandel')
+  await expect(detail).toContainText('Demoteam')
+  await detail.getByRole('button', { name: 'Lukk' }).click()
+  await portfolio.getByText('Hvordan telles resultatene?').click()
+  await expect(portfolio.getByText(/Teamfilteret bruker teamet/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('projects, follow-ups and reports switch independently and portfolio tiles open the filtered records', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
+  const screens = [
+    ['Prosjekter', 'Prosjektadministrasjon', 'Digitale vekstpakker'],
+    ['Oppfølging', 'Oppfølgingsoppgaver', 'Oppfølgingskø'],
+    ['Rapporter', 'Prosjektrapporter', 'Lederoversikt'],
+  ]
+  for (const [name, region, heading] of [...screens, ...screens.slice().reverse(), screens[2]]) {
+    const menu = page.getByRole('button', { name: 'Åpne meny' })
+    if (await menu.isVisible()) await menu.click()
+    await page.getByRole('navigation').getByRole('button', { name, exact: true }).click()
+    await expect(page.getByRole('heading', { level: 1, name, exact: true })).toBeVisible()
+    await expect(page.getByRole('region', { name: region, exact: true }).getByRole('heading', { name: heading, exact: true })).toBeVisible()
+    for (const [, other] of screens) {
+      if (other !== region) await expect(page.getByRole('region', { name: other, exact: true })).toHaveCount(0)
+    }
+  }
+  const portfolio = page.getByRole('region', { name: 'Lederoversikt' })
+  async function checkMetric(title: string, count: number, text: string) {
+    await portfolio.getByRole('button', { name: title + ' ' + count, exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: title, exact: true })
+    await expect(dialog).toContainText(text)
+    await expect(dialog.getByRole('listitem')).toHaveCount(count)
+    await dialog.getByRole('button', { name: 'Lukk' }).click()
+  }
+  await checkMetric('Leads', 7, 'Fjord & Form')
+  await checkMetric('Fullførte samtaler', 0, 'Ingen fullførte samtaler')
+  await checkMetric('Registrerte møter', 1, 'Vest Byggpartner')
+  await checkMetric('Kjøpende kunder', 1, 'Havblikk Studio')
+  await portfolio.getByLabel('Team', { exact: true }).selectOption('Møtebooking')
+  await checkMetric('Leads', 2, 'Nordlys Elektro')
+  await checkMetric('Kjøpende kunder', 0, 'Ingen kjøpende kunder')
+  await portfolio.getByRole('button', { name: 'Nullstill filtre' }).click()
+  await portfolio.getByLabel('Prosjekt', { exact: true }).selectOption('demo-2')
+  await checkMetric('Leads', 0, 'Ingen leads')
+  await portfolio.getByRole('button', { name: 'Nullstill filtre' }).click()
+  await portfolio.getByText('Havblikk Studio', { exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Havblikk Studio' })).toContainText('Partnerandel')
+})

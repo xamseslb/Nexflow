@@ -7,7 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from .db import session
 from .domain import Eligibility, allocate, can_call, can_approve
-from .models import Project, Membership, Lead, Call, RegistryCheck, Consent, Product, Sale, Meeting, AuditEvent, Job
+from .models import Project, Membership, Lead, Call, CallList, RegistryCheck, Consent, Product, Sale, Meeting, AuditEvent, Job
 from .schemas import LeadCreate, ImportLeads, CallResult, SaleCreate, MeetingCreate, MoveAssignment
 
 router = APIRouter(prefix="/api/v1")
@@ -18,6 +18,12 @@ MANAGERS = {"leader", "admin"}
 
 def now():
     return datetime.now(timezone.utc)
+
+
+def lock_operator(db: Session):
+    # Membership moves/revocations use the same transaction lock before releasing leases.
+    db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+               {"key": str(db.info["user_id"])})
 
 
 def project_access(db: Session, project_id: UUID, roles: set[str] | None = None) -> Project:
@@ -48,7 +54,7 @@ def audit(db: Session, project: Project, action: str, entity_id: UUID, details=N
 def eligibility(db: Session, project: Project, lead: Lead):
     current = now()
     check = db.scalar(select(RegistryCheck).where(RegistryCheck.lead_id == lead.id, RegistryCheck.phone == lead.phone)
-                      .order_by(RegistryCheck.checked_at.desc()).limit(1))
+                      .order_by(RegistryCheck.checked_at.desc(), RegistryCheck.id.desc()).limit(1))
     consent = db.scalar(select(Consent.id).where(
         Consent.lead_id == lead.id, Consent.partner_id == project.partner_id,
         Consent.phone == lead.phone, Consent.revoked_at.is_(None), Consent.granted_at <= current,
@@ -60,13 +66,21 @@ def eligibility(db: Session, project: Project, lead: Lead):
                         registry_reserved=check.reserved if check else None, consent_valid=consent is not None)
     if lead.status in ("sold", "declined"):
         decision = Eligibility(False, "Leadet er avsluttet")
+    elif lead.call_list_id and lead.status == "callback" and lead.callback_at and lead.callback_at > current:
+        decision = Eligibility(False, "Tilbakekallingen er planlagt til et senere tidspunkt")
     return decision, {"allowed": decision.allowed, "reason": decision.reason, "evaluated_at": current.isoformat(),
                       "registry_check_id": str(check.id) if check else None,
                       "consent_id": str(consent) if consent else None, "rule_version": 1}
 
 
 def lead_payload(lead: Lead):
-    return {key: getattr(lead, key) for key in ("id", "project_id", "company", "contact", "phone", "kind", "status", "priority", "industry", "city", "summary", "enrichment", "blocked", "reserved_by", "reserved_until", "callback_at")}
+    payload = {key: getattr(lead, key) for key in ("id", "project_id", "call_list_id", "company", "contact", "phone", "kind", "status", "priority", "industry", "city", "summary", "blocked", "reserved_by", "reserved_until", "callback_at")}
+    info = lead.enrichment if lead.kind == "b2b" and isinstance(lead.enrichment, dict) else {}
+    public = {key: info[key] for key in ("name", "industry", "city", "source", "fetched_at")
+              if isinstance(info.get(key), str) and info[key].strip()}
+    if type(info.get("employees")) is int and info["employees"] >= 0:
+        public["employees"] = info["employees"]
+    return {**payload, "enrichment": public}
 
 
 @router.get("/me")
@@ -77,7 +91,7 @@ def me(db: Session = Db):
 @router.get("/projects")
 def projects(db: Session = Db):
     return [{"id": p.id, "name": p.name, "description": p.description, "active": p.active, "kind": p.kind,
-             "partner_id": p.partner_id, "role": db.get(Membership, (p.id, db.info["user_id"])).role}
+             "project_type": p.project_type, "partner_id": p.partner_id, "role": db.get(Membership, (p.id, db.info["user_id"])).role}
             for p in db.scalars(select(Project).join(Membership, Membership.project_id == Project.id)
                                 .where(Membership.user_id == db.info["user_id"], Membership.active.is_(True))
                                 .order_by(Project.name))]
@@ -120,6 +134,7 @@ def import_leads(project_id: UUID, body: ImportLeads, db: Session = Db):
 
 @router.post("/projects/{project_id}/leads/{lead_id}/reserve")
 def reserve(project_id: UUID, lead_id: UUID, db: Session = Db):
+    lock_operator(db)
     project = project_access(db, project_id, OPERATORS)
     if not project.active:
         raise HTTPException(409, "Prosjektet er pauset")
@@ -137,12 +152,22 @@ def reserve(project_id: UUID, lead_id: UUID, db: Session = Db):
 
 @router.delete("/projects/{project_id}/leads/{lead_id}/reservation", status_code=204)
 def release(project_id: UUID, lead_id: UUID, db: Session = Db):
+    lock_operator(db)
     project = project_access(db, project_id, OPERATORS)
     lead = lead_for(db, project_id, lead_id, lock=True)
     if lead.reserved_by != db.info["user_id"]:
         raise HTTPException(403, "Du kan bare frigjøre egne reservasjoner")
+    for pending in db.scalars(open_calls(db, project_id, lead_id)):
+        audit(db, project, "call.abandoned", pending.id)
     lead.reserved_by = lead.reserved_until = None
     audit(db, project, "lead.released", lead.id)
+
+
+def open_calls(db: Session, project_id: UUID, lead_id: UUID):
+    abandoned = select(AuditEvent.entity_id).where(AuditEvent.project_id == project_id,
+                        AuditEvent.action == "call.abandoned", AuditEvent.entity_id == Call.id).exists()
+    return select(Call).where(Call.project_id == project_id, Call.lead_id == lead_id,
+                              Call.user_id == db.info["user_id"], Call.completed_at.is_(None), ~abandoned)
 
 
 @router.get("/projects/{project_id}/leads/{lead_id}/eligibility")
@@ -152,8 +177,26 @@ def get_eligibility(project_id: UUID, lead_id: UUID, db: Session = Db):
     return evidence
 
 
+@router.get("/projects/{project_id}/leads/{lead_id}/call-history")
+def call_history(project_id: UUID, lead_id: UUID, db: Session = Db):
+    project_access(db, project_id, OPERATORS)
+    lead = lead_for(db, project_id, lead_id)
+    query = select(Call).where(Call.project_id == project_id, Call.lead_id == lead_id,
+                               Call.completed_at.is_not(None))
+    membership = db.get(Membership, (project_id, db.info["user_id"]))
+    # Listed leads are only visible to the assigned operator or a manager.
+    # An explicit handover includes prior notes; the legacy shared pool remains personal.
+    manager = membership.role in MANAGERS
+    if not manager and lead.call_list_id is None:
+        query = query.where(Call.user_id == db.info["user_id"])
+    calls = db.scalars(query.order_by(Call.completed_at.desc(), Call.id.desc()).limit(10))
+    return [{"id": call.id, "completed_at": call.completed_at, "outcome": call.outcome,
+             "note": call.note, "can_flag": manager or call.user_id == db.info["user_id"]} for call in calls]
+
+
 @router.post("/projects/{project_id}/leads/{lead_id}/call-authorization", status_code=201)
 def authorize_call(project_id: UUID, lead_id: UUID, db: Session = Db):
+    lock_operator(db)
     project = project_access(db, project_id, OPERATORS)
     lead = lead_for(db, project_id, lead_id, lock=True)
     if lead.status in ("sold", "declined"):
@@ -161,9 +204,14 @@ def authorize_call(project_id: UUID, lead_id: UUID, db: Session = Db):
     decision, evidence = eligibility(db, project, lead)
     if not decision.allowed:
         raise HTTPException(409, decision.reason)
+    if lead.reserved_by == db.info["user_id"] and lead.reserved_until and lead.reserved_until > now():
+        previous = db.scalar(open_calls(db, project_id, lead_id).where(Call.created_at >= now() - timedelta(minutes=15))
+            .order_by(Call.created_at.desc(), Call.id.desc()).limit(1))
+        if previous:
+            return {"id": previous.id, "phone": lead.phone, "expires_at": lead.reserved_until}
     lead.reserved_by, lead.reserved_until = db.info["user_id"], now() + timedelta(minutes=15)
     call = Call(project_id=project.id, partner_id=project.partner_id, lead_id=lead.id,
-                user_id=db.info["user_id"], authorization=evidence)
+                user_id=db.info["user_id"], authorization=evidence, created_at=now())
     db.add(call)
     db.flush()
     audit(db, project, "call.authorized", call.id, evidence)
@@ -172,18 +220,32 @@ def authorize_call(project_id: UUID, lead_id: UUID, db: Session = Db):
 
 @router.patch("/projects/{project_id}/calls/{call_id}")
 def complete_call(project_id: UUID, call_id: UUID, body: CallResult, db: Session = Db):
+    lock_operator(db)
     project = project_access(db, project_id, OPERATORS)
     call = db.scalar(select(Call).where(Call.id == call_id, Call.project_id == project_id).with_for_update())
     if not call or call.user_id != db.info["user_id"]:
         raise HTTPException(404, "Samtalen finnes ikke")
     if call.completed_at:
+        if (call.outcome, call.note, call.callback_at) == (body.outcome, body.note, body.callback_at):
+            return {"id": call.id, "outcome": call.outcome}
         raise HTTPException(409, "Utfallet er allerede registrert")
+    latest = db.scalar(select(Call.id).where(Call.project_id == project_id, Call.lead_id == call.lead_id)
+                       .order_by(Call.created_at.desc(), Call.id.desc()).limit(1))
+    if latest != call.id or db.scalar(open_calls(db, project_id, call.lead_id).where(Call.id == call.id)) is None:
+        raise HTTPException(409, "Ringeøkten er avsluttet. Start en ny samtale.")
     if body.outcome == "callback" and (body.callback_at is None or body.callback_at <= now()):
         raise HTTPException(422, "Velg et fremtidig tidspunkt for tilbakekalling")
     lead = lead_for(db, project_id, call.lead_id, lock=True)
     if lead.reserved_by != db.info["user_id"] or not lead.reserved_until or lead.reserved_until <= now():
         raise HTTPException(409, "Reservasjonen er utløpt. Reserver leadet på nytt før utfallet lagres.")
     call.outcome, call.note, call.completed_at = body.outcome, body.note, now()
+    call.callback_at = body.callback_at
+    if lead.call_list_id:
+        lead.queue_completed_at = None if body.outcome == "callback" else call.completed_at
+        if body.outcome != "callback":
+            lead.callback_at = None
+            if lead.status == "callback":
+                lead.status = "new"
     # A call outcome never substitutes for an actual sale or meeting record.
     if body.outcome in ("declined", "callback") and lead.status not in ("sold", "meeting"):
         lead.status = body.outcome
@@ -204,7 +266,10 @@ def products(project_id: UUID, db: Session = Db):
 @router.get("/projects/{project_id}/sales")
 def sales(project_id: UUID, db: Session = Db):
     project_access(db, project_id)
-    return [{"id": s.id, "lead_id": s.lead_id, "amount_ore": s.amount_ore, "status": s.status,
+    uid = db.info["user_id"]
+    role = db.get(Membership, (project_id, uid)).role
+    return [{"can_manage_documents": role in MANAGERS or (role in {"seller", "closer"} and s.seller_id == uid),
+             "id": s.id, "lead_id": s.lead_id, "amount_ore": s.amount_ore, "status": s.status,
              "allocation": s.allocation, "created_at": s.created_at} for s in db.scalars(select(Sale).where(Sale.project_id == project_id).order_by(Sale.created_at.desc()).limit(500))]
 
 
@@ -262,14 +327,16 @@ def approve_sale(project_id: UUID, sale_id: UUID, db: Session = Db):
 def meetings(project_id: UUID, db: Session = Db):
     project_access(db, project_id)
     return [{"id": m.id, "lead_id": m.lead_id, "starts_at": m.starts_at, "ends_at": m.ends_at,
-             "closer_id": m.closer_id, "outcome": m.outcome, "qualification": m.qualification}
+             "closer_id": m.closer_id, "outcome": m.outcome, "qualification": m.qualification,
+             "can_record_outcome": m.closer_id == db.info["user_id"]}
             for m in db.scalars(select(Meeting).where(Meeting.project_id == project_id).order_by(Meeting.starts_at).limit(500))]
 
 
 @router.get("/projects/{project_id}/team")
 def team(project_id: UUID, db: Session = Db):
     project_access(db, project_id, MANAGERS)
-    return [{"id": m.user_id, "role": m.role} for m in db.scalars(select(Membership).where(Membership.project_id == project_id, Membership.active))]
+    return [dict(row) for row in db.execute(text("SELECT id, name, role FROM hub_private.team_directory(:project) WHERE active ORDER BY name, id"),
+                                            {"project": project_id}).mappings()]
 
 
 @router.get("/projects/{project_id}/closers")
@@ -309,7 +376,7 @@ def move_assignment(project_id: UUID, body: MoveAssignment, db: Session = Db):
         raise HTTPException(409, "Flytting med leads krever avklart eierskap og samtykke; bruk frigjøring")
     # Serialize moves of the same seller, including different source projects.
     db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"), {"key": str(body.user_id)})
-    member = db.get(Membership, (project_id, body.user_id))
+    member = db.get(Membership, (project_id, body.user_id), with_for_update=True)
     if not member or not member.active or member.role not in {"seller", "booker", "closer"}:
         raise HTTPException(422, "Velg en aktiv selger, booker eller closer")
     destination = db.get(Membership, (target.id, body.user_id))
@@ -317,6 +384,9 @@ def move_assignment(project_id: UUID, body: MoveAssignment, db: Session = Db):
         raise HTTPException(409, "Brukeren er allerede tildelt målprosjektet")
     for lead in db.scalars(select(Lead).where(Lead.project_id == project_id, Lead.reserved_by == body.user_id).with_for_update()):
         lead.reserved_by = lead.reserved_until = None
+    for queue in db.scalars(select(CallList).where(CallList.project_id == project_id,
+                            CallList.assignee_id == body.user_id).with_for_update()):
+        queue.assignee_id = None
     if destination:
         destination.active, destination.role = True, member.role
     else:

@@ -18,15 +18,15 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   return response.status === 204 ? undefined as T : response.json()
 }
 
-export type Project = { id: string; name: string; description: string; active: boolean; kind: string; role: string; partner_id: string }
+export type Project = { id: string; name: string; description: string; active: boolean; kind: string; project_type?: string; role: string; partner_id: string }
 export type Lead = { id: string; project_id: string; company: string; contact: string; phone: string; kind: 'b2b' | 'b2c'; status: string; priority: number; industry: string; city: string; summary: string; blocked: boolean; enrichment: Record<string, unknown>; reserved_by?: string | null; callback_at?: string | null }
 export type Product = { id: string; name: string; price_ore: number }
-export type Sale = { id: string; lead_id: string; amount_ore: number; status: string; created_at: string; allocation: { seller: number; hub: number; partner: number } }
+export type Sale = { can_manage_documents?: boolean; id: string; lead_id: string; amount_ore: number; status: string; created_at: string; allocation: { seller: number; hub: number; partner: number } }
 export type Meeting = { id: string; lead_id: string; starts_at: string; ends_at: string; outcome: string; closer_id: string; qualification: Record<string, string> }
 
 export const demoProjects: Project[] = [
-  { id: 'demo-1', partner_id: 'p1', name: 'Digitale vekstpakker', description: 'Nettsider og synlighet for norske bedrifter', kind: 'b2b', role: 'leader', active: true },
-  { id: 'demo-2', partner_id: 'p2', name: 'Smartere arbeidsdag', description: 'Programvare som gir teamet tid tilbake', kind: 'b2b', role: 'leader', active: true }
+  { id: 'demo-1', partner_id: 'p1', name: 'Digitale vekstpakker', project_type: 'Direktesalg', description: 'Nettsider og synlighet for norske bedrifter', kind: 'b2b', role: 'leader', active: true },
+  { id: 'demo-2', partner_id: 'p2', name: 'Smartere arbeidsdag', project_type: 'Møtebooking', description: 'Programvare som gir teamet tid tilbake', kind: 'b2b', role: 'leader', active: true }
 ]
 
 export const demoLeads: Lead[] = [
@@ -39,7 +39,7 @@ export const demoLeads: Lead[] = [
   ['7', 'Eksempelkontakt', 'Testperson', 'Forbruker', 'Oslo', 65, 'new', 'Demonstrerer sperring av B2C-kontakt uten gyldig samtykke.']
 ].map(([id, company, contact, industry, city, priority, status, summary]) => ({
   id: String(id), project_id: 'demo-1', company: String(company), contact: String(contact), industry: String(industry), city: String(city),
-  priority: Number(priority), status: String(status), summary: String(summary), phone: 'Kun demonstrasjon', kind: id === '7' ? 'b2c' : 'b2b', blocked: id === '7', enrichment: {}
+  priority: Number(priority), status: String(status), summary: String(summary), phone: 'Kun demonstrasjon', kind: id === '7' ? 'b2c' : 'b2b', blocked: id === '7', enrichment: id === '1' ? { employees: 12, city: String(city), industry: String(industry), source: 'Eksempeldata' } : {}
 }))
 export const demoProducts: Product[] = [{ id: 'growth', name: 'Vekstpakke · Nettside', price_ore: 2490000 }, { id: 'visibility', name: 'Synlighet · Oppstart', price_ore: 990000 }]
 export const demoSales: Sale[] = [{ id: 'sale-demo', lead_id: '6', amount_ore: 2490000, status: 'registered', created_at: new Date().toISOString(), allocation: { seller: 249000, hub: 498000, partner: 1743000 } }]

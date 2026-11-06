@@ -11,9 +11,12 @@ test('lead search, simulated call and two-tap outcome', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Søk i leads' }).fill('Fjord')
   await page.getByRole('button', { name: /Fjord & Form/ }).click()
   await page.getByRole('button', { name: 'Simuler samtale' }).click()
-  await page.getByRole('button', { name: 'Ikke svar', exact: true }).click()
+  await page.getByLabel('Samtalenotat').fill('Avtal prisgjennomgang torsdag')
+  await page.getByRole('button', { name: 'Svar', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('Samtaleutfallet er registrert')
   await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: /Fjord & Form/ }).click()
+  await expect(page.getByRole('dialog')).toContainText('Avtal prisgjennomgang torsdag')
 })
 
 test('reserved B2C contact is blocked', async ({ page }) => {
@@ -64,7 +67,9 @@ test('overview visual review', async ({ page }, testInfo) => {
 })
 
 test('console status shortcuts filter leads and menu navigation clears the filter', async ({ page }) => {
+  await page.getByRole('textbox', { name: 'Søk i leads' }).fill('Fjord')
   await page.getByRole('button', { name: 'Møte booket: 1 leads. Vis i ringelisten' }).click()
+  await expect(page.getByRole('textbox', { name: 'Søk i leads' })).toHaveValue('')
   await expect(page.locator('.board-card')).toHaveCount(1)
   await expect(page.locator('.board-card')).toContainText('Vest Byggpartner')
   await page.getByRole('button', { name: 'Alle leads', exact: true }).click()

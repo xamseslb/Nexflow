@@ -49,6 +49,7 @@ class MoveAssignment(Input):
 
 
 class FollowUpCreate(Input):
+    assignee_id: UUID | None = None
     lead_id: UUID
     title: str = Field(min_length=1, max_length=200)
     note: str = Field(default="", max_length=4000)
@@ -58,3 +59,7 @@ class FollowUpCreate(Input):
 
 class FollowUpUpdate(Input):
     status: Literal["done", "cancelled"]
+
+
+class FollowUpAssignment(Input):
+    assignee_id: UUID
