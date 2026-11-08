@@ -17,6 +17,15 @@ test('lead search, simulated call and two-tap outcome', async ({ page }) => {
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /Fjord & Form/ }).click()
   await expect(page.getByRole('dialog')).toContainText('Avtal prisgjennomgang torsdag')
+  await page.getByRole('button',{name:'Lukk',exact:true}).click()
+  const menu = page.getByRole('button',{name:'Åpne meny'})
+  if (await menu.isVisible()) await menu.click()
+  await page.getByRole('navigation').getByRole('button',{name:'Rapporter'}).click()
+  await page.getByRole('button',{name:'Fullførte samtaler 1'}).click()
+  await page.getByRole('dialog').getByRole('button',{name:/Fjord & Form/}).click()
+  const call = page.getByRole('dialog',{name:'Fjord & Form'})
+  await expect(call).toContainText('Avtal prisgjennomgang torsdag')
+  await expect(call).toContainText('Svar')
 })
 
 test('reserved B2C contact is blocked', async ({ page }) => {

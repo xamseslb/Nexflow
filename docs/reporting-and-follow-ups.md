@@ -14,7 +14,7 @@ Alle stier har prefikset `/api/v1/projects/{project_id}` og krever et gyldig Sup
 
 | Metode | Sti | Formål |
 |---|---|---|
-| GET | `/reports?start=2026-10-01&end=2026-10-31&timezone=Europe/Oslo` | Måltall, daglig serie, pipeline, konvertering og boksplott |
+| GET | `/reports?start=2026-10-01&end=2026-10-31&timezone=Europe/Oslo` | Måltall, daglig serie, pipeline, konvertering og fordelingsstatistikk |
 | GET | `/follow-ups?status=open&overdue=false&limit=50&offset=0` | Oppgavekø, eventuelt med `lead_id` |
 | POST | `/follow-ups` | Opprett egen oppgave, eller tildel den som leder til en medarbeider med tilgang til leadet |
 | PATCH | `/follow-ups/{task_id}` | Avslutt med `done` eller `cancelled` |
@@ -51,11 +51,11 @@ Periodens start- og sluttdato er **inklusive lokale kalenderdatoer**. SQL bruker
 - `distributions.sale_amount`: femtallssammendrag av periodens registrerte NOK-salg i øre.
 - `distributions.hours_to_sale`: samme sammendrag av timer fra leadets oppretting til hver salgsregistrering i perioden. Negative tidsintervaller utelates.
 
-Boksplottene bruker PostgreSQL `percentile_cont` med lineær interpolering. Endepunktene er **minimum og maksimum**, ikke Tukey-gjerder; det utføres ingen separat klassifisering av uteliggere. Minst fem observasjoner kreves for å vise et plott. Utvalgsstørrelsen vises alltid. Ørebeløpene i kvartilene kan være interpolerte; kun visning avrundes. Aggregeringen er prosjektbasert og viser ikke individuelle selgere.
+Prosjektanalysen viser median for salgsbeløp og tid til salg når utvalget har minst fem observasjoner. API-et beregner kvartilene med PostgreSQL `percentile_cont`. Velg et måltall for å se dagsserien, eller åpne en dato for å se alle dagens summer. Leadstatus viser prosjektets nåværende kontakter, også når perioden endres.
 
 ## Demo
 
-Rapportsiden viser et tydelig merket, deterministisk eksempel for oktober 2026. Det er ikke beregnet fra demoens lokale ringeliste. Kilden er `backend/scripts/generate_demo_report.py`, som bruker den samme rapportassembleren som backend. Generer på nytt fra prosjektroten med `.venv/bin/python backend/scripts/generate_demo_report.py`.
+I prosjektet Digitale vekstpakker viser den historiske serien et merket eksempel fra oktober 2026. Fordelingen på leadstatus og kundene du åpner derfra, kommer fra det aktive demoprosjektet. Kilden er `backend/scripts/generate_demo_report.py`, som bruker den samme rapportassembleren som backend. Generer på nytt fra prosjektroten med `.venv/bin/python backend/scripts/generate_demo_report.py`.
 
 Demooppgaver ligger kun i komponentens minne og nullstilles når oppfølgingssiden forlates. Demoen skriver ingen journalposter; aktivitetshistorikken sier dette eksplisitt. Ingen database eller skjult suksess-stub benyttes.
 

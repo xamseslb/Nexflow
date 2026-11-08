@@ -97,7 +97,21 @@ test('signed-in admin can retry login, refresh, update access, move seller and t
 
 test('partner has read-only sale view and no document or administrative actions', async ({page}) => {
   const service = await setup(page,'partner')
+  // A completed demo guide must not suppress this account's first visit.
+  await page.evaluate(() => localStorage.removeItem('nexflow:tour:v2:00000000-0000-4000-8000-000000000001'))
   await login(page,'test-only-password')
+  const tour = page.getByRole('dialog', { name: 'Omvisning i Nexflow' })
+  await expect(tour).toBeVisible()
+  const headings = []
+  while (true) {
+    headings.push(await tour.getByRole('heading').innerText())
+    if (await tour.getByRole('button', { name: 'Videre til Ringeliste' }).isVisible()) break
+    expect(headings.length).toBeLessThan(16)
+    await tour.getByRole('button', { name: 'Neste' }).click()
+  }
+  expect(headings).not.toContain('Legg til en kontakt')
+  await tour.getByRole('button', { name: 'Hopp over' }).click()
+  await expect(tour).toHaveCount(0)
   await go(page,'Salg og opptjening')
   await expect(page.getByRole('button',{name:'Vedlegg'})).toHaveCount(0)
   await expect(page.getByRole('button',{name:'Godkjenn'})).toHaveCount(0)
@@ -135,4 +149,30 @@ test('signed-in portfolio sends the selected team on every detail page and retri
   await expect(dialog).toContainText('Siste bedrift')
   await dialog.getByRole('button', { name:'Forrige' }).click()
   await expect(dialog).toContainText('Første bedrift')
+})
+
+test('a manager opens an off-page customer in the correct project and returns to the original report', async ({ page }) => {
+  await setup(page)
+  const lead = { id:'specific',project_id:'two',company:'Havblikk Studio',contact:'Riktig kontakt',phone:'',kind:'b2b',
+    status:'new',priority:0,industry:'Foto',city:'Bergen',summary:'',blocked:false,enrichment:{} }
+  await page.route('**/portfolio/sales?**', route => {
+    const params = new URL(route.request().url()).searchParams
+    return route.fulfill({json:params.has('metric') ? {items:[{id:lead.id,lead_id:lead.id,project_id:'two',
+      project:'Prosjekt Sør',company:lead.company,detail:lead.contact}],has_more:false} :
+      {items:[],teams:['Vest'],project_types:[],count:0,total_ore:0,activity:{leads:1,calls:0,meetings:0,buyers:0}}})
+  })
+  await page.route('**/projects/two/customers?**', route => route.fulfill({json:{items:[],has_more:false}}))
+  await page.route('**/projects/two/customers/specific', route => route.fulfill({json:{lead,step:1,org_number:null,calls:[],tasks:[],meetings:[],sales:[]}}))
+  await login(page,'test-only-password')
+  await go(page,'Rapporter')
+  await page.getByLabel('Team',{exact:true}).selectOption('Vest')
+  await page.getByRole('button',{name:'Leads 1',exact:true}).click()
+  await page.getByRole('dialog').getByRole('button',{name:/Havblikk Studio/}).click()
+  await expect(page.getByLabel('Aktivt prosjekt')).toHaveValue('two')
+  await expect(page.getByRole('region',{name:'Kundeprofil'})).toContainText('Riktig kontakt')
+  await page.getByRole('button',{name:/Tilbake til rapporten/}).click()
+  await expect(page.getByRole('dialog',{name:'Leads'})).toContainText('Havblikk Studio')
+  await page.getByRole('button',{name:'Lukk',exact:true}).click()
+  await expect(page.getByLabel('Team',{exact:true})).toHaveValue('Vest')
+  await expect(page.getByLabel('Aktivt prosjekt')).toHaveValue('one')
 })

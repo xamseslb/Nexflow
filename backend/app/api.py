@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+from .company_registry import public_facts
 from .db import session
 from .domain import Eligibility, allocate, can_call, can_approve
 from .models import Project, Membership, Lead, Call, CallList, RegistryCheck, Consent, Product, Sale, Meeting, AuditEvent, Job
@@ -76,11 +77,7 @@ def eligibility(db: Session, project: Project, lead: Lead):
 def lead_payload(lead: Lead):
     payload = {key: getattr(lead, key) for key in ("id", "project_id", "call_list_id", "company", "contact", "phone", "kind", "status", "priority", "industry", "city", "summary", "blocked", "reserved_by", "reserved_until", "callback_at")}
     info = lead.enrichment if lead.kind == "b2b" and isinstance(lead.enrichment, dict) else {}
-    public = {key: info[key] for key in ("name", "industry", "city", "source", "fetched_at")
-              if isinstance(info.get(key), str) and info[key].strip()}
-    if type(info.get("employees")) is int and info["employees"] >= 0:
-        public["employees"] = info["employees"]
-    return {**payload, "enrichment": public}
+    return {**payload, "enrichment": public_facts(info)}
 
 
 @router.get("/me")
@@ -120,8 +117,9 @@ def create_lead(project_id: UUID, body: LeadCreate, db: Session = Db):
     lead = Lead(project_id=project.id, partner_id=project.partner_id, **body.model_dump())
     db.add(lead)
     db.flush()
-    if lead.kind == "b2b" and lead.org_number:
-        db.add(Job(project_id=project.id, partner_id=project.partner_id, kind="brreg_enrichment", payload={"lead_id": str(lead.id)}))
+    if lead.kind == "b2b":
+        db.execute(Job.__table__.insert().inline().values(project_id=project.id, partner_id=project.partner_id,
+                                                       kind="brreg_enrichment", payload={"lead_id": str(lead.id)}))
     audit(db, project, "lead.created", lead.id)
     return lead_payload(lead)
 

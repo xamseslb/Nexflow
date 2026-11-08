@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowUpRight, Building2, CalendarDays, Check, ChevronRight, ClipboardList, Flag, Phone, Search } from 'lucide-react'
 import { type Lead, type Meeting, type Sale, request } from '@/lib/api'
 import { money } from '@/lib/utils'
@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import type { CallEntry } from '@/components/CallHistory'
 import { meetingOutcomeLabel } from './MeetingActions'
+import { BusinessFacts } from './BusinessFacts'
+import bouvetExample from '@/lib/bouvet-example.json'
 import './customer.css'
 
 type Page<T> = { items: T[]; has_more: boolean }
@@ -13,14 +15,15 @@ type ProfileCall = CallEntry & { can_flag?: boolean; flag_status?: 'open' | 'rev
 type Profile = {
   lead: Lead; step: number; org_number: string | null; calls: ProfileCall[]
   tasks: { id: string; title: string; due_at: string }[]
-  meetings: Pick<Meeting, 'id' | 'starts_at' | 'outcome'>[]
-  sales: Pick<Sale, 'id' | 'status' | 'created_at' | 'amount_ore'>[]
+  meetings: Pick<Meeting, 'id' | 'starts_at' | 'ends_at' | 'outcome' | 'qualification'>[]
+  sales: Pick<Sale, 'id' | 'status' | 'created_at' | 'amount_ore' | 'allocation'>[]
 }
 type QualityCase = {
   id: string; lead_id: string; company: string; reason: string; created_at: string
   call_note: string; call_outcome: string; reviewed_at: string | null; review_note: string | null
 }
-type Props = {
+export type CustomerTarget = { project: string; lead: string; sales: boolean }
+type Props = { target?: CustomerTarget | null;
   demoTasks?: import('./FollowUps').FollowUpTask[]
   projectId: string; demo: boolean; leads: Lead[]; role: string; onLead: (lead: Lead) => void
   sales?: Sale[]; meetings?: Meeting[]; demoCalls?: Record<string, CallEntry[]>; active?: boolean
@@ -47,35 +50,22 @@ function useRemote<T>(url: string | null, version: number, source?: unknown) {
   return url && result?.key === key ? result : undefined
 }
 
-function BusinessFacts({ lead }: { lead: Lead }) {
-  if (lead.kind !== 'b2b') return null
-  const info = lead.enrichment || {}
-  const labels = { name: 'Registrert navn', industry: 'Bransje', city: 'Poststed', source: 'Kilde' }
-  const rows: [string, string][] = []
-  if (typeof info.employees === 'number' && Number.isInteger(info.employees) && info.employees >= 0) {
-    rows.push(['Ansatte', info.employees.toLocaleString('nb-NO')])
-  }
-  for (const [key, label] of Object.entries(labels)) {
-    const value = info[key]
-    if (typeof value === 'string' && value.trim()) rows.push([label, value])
-  }
-  if (typeof info.fetched_at === 'string' && Number.isFinite(Date.parse(info.fetched_at))) {
-    rows.push(['Oppdatert', dateLabel(info.fetched_at)])
-  }
-  if (!rows.length) return null
-  return <section className="customer-business" aria-label="Bedriftsopplysninger">
-    <h3>Bedriftsopplysninger</h3><dl className="customer-facts">
-      {rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-    </dl>
-  </section>
-}
 
-export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales = [], meetings = [], demoCalls = {}, demoTasks = [], active = true }: Props) {
+
+export function CustomerWorkspace({ target, projectId, demo, leads, role, onLead, sales = [], meetings = [], demoCalls = {}, demoTasks = [], active = true }: Props) {
   const [tab, setTab] = useState<'contacts' | 'quality'>('contacts')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(0)
+  const [showExample, setShowExample] = useState(false)
   const [chosen, setChosen] = useState('')
   const [mobileDetail, setMobileDetail] = useState(false)
+  const salesHeading = useRef<HTMLHeadingElement>(null)
+  const focusSales = useRef(false)
+  useEffect(() => {
+    if (!target || target.project !== projectId) return
+    setTab('contacts'); setChosen(target.lead); setQuery(''); setPage(0); setMobileDetail(true)
+    focusSales.current = target.sales
+  }, [projectId, target])
   const [reviewed, setReviewed] = useState(false)
   const [qualityPage, setQualityPage] = useState(0)
   const [version, setVersion] = useState(0)
@@ -92,8 +82,9 @@ export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales 
     .sort((a,b) => a.company.localeCompare(b.company, 'nb')) : []
   const rows = demo ? demoMatches.slice(page * 30, page * 30 + 30) : directory?.value?.items || []
   const nextPage = demo ? (page + 1) * 30 < demoMatches.length : directory?.value?.has_more
-  const selected = rows.find(lead => lead.id === chosen) || rows[0]
-  const details = useRemote<Profile>(active && !demo && tab === 'contacts' && selected ? `${root}/customers/${selected.id}` : null, version, leads)
+  const selectedId = chosen || rows[0]?.id
+  const selected = (demo ? leads : rows).find(lead => lead.id === selectedId)
+  const details = useRemote<Profile>(active && !demo && tab === 'contacts' && selectedId ? `${root}/customers/${selectedId}` : null, version, leads)
   const queue = useRemote<Page<QualityCase>>(active && !demo && tab === 'quality' && manager ? `${root}/quality-flags?reviewed=${reviewed}&page=${qualityPage}` : null, version)
   const matchedFlags = demoFlags.filter(item => Boolean(item.reviewed_at) === reviewed)
   const cases = demo ? matchedFlags.slice(qualityPage * 30, qualityPage * 30 + 30) : queue?.value?.items || []
@@ -109,6 +100,12 @@ export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales 
       meetings: meetings.filter(m => m.lead_id === selected.id), sales: sales.filter(s => s.lead_id === selected.id) }
   }
 
+  useEffect(() => {
+    if (active && focusSales.current && profile?.lead.id === target?.lead && salesHeading.current) {
+      focusSales.current = false
+      salesHeading.current.focus()
+    }
+  }, [active, profile?.lead.id, target])
   async function advance(step: number) {
     if (!profile || busy) return
     setBusy(true); setError('')
@@ -141,7 +138,9 @@ export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales 
     <div className="customer-tools">
       <div className="customer-switch"><button aria-pressed={tab === 'contacts'} onClick={() => {setError(''); setTab('contacts')}}><Building2 />Kunderegister</button>
         {manager && <button aria-pressed={tab === 'quality'} onClick={() => {setError(''); setTab('quality')}}><Flag />Kvalitetskontroll</button>}</div>
+      {demo && tab === 'contacts' && <Button className="business-example" variant="outline" size="sm" onClick={() => setShowExample(true)}>Se ekte bedriftsoppslag</Button>}
     </div>
+    {demo && <Dialog open={showExample} onOpenChange={setShowExample} title="Bouvet Norge AS" description="Lagret eksempel fra offentlige kilder."><BusinessFacts info={bouvetExample} /></Dialog>}
     {(loadError || (error && !editing)) && <div role="alert" className="customer-alert">{error || loadError} <button onClick={retry}>Prøv igjen</button></div>}
     {tab === 'contacts' ? <div className={'customer-split' + (mobileDetail ? ' show-detail' : '')}>
       <aside className="customer-index" aria-label="Kunderegister">
@@ -150,15 +149,15 @@ export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales 
           onClick={() => {setError(''); setChosen(lead.id); setMobileDetail(true)}}><span className="customer-monogram">{lead.company.slice(0,1)}</span>
           <span><strong>{lead.company}</strong><small>{lead.contact || lead.phone}</small></span><ChevronRight size={15} /></button>)}
         {!rows.length && <p className="customer-muted">{directory?.error ? 'Registeret er utilgjengelig.' : demo || directory?.value ? 'Ingen kunder å vise.' : 'Henter kunder…'}</p>}
-        {(page > 0 || nextPage) && <div className="customer-paging"><Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(v => v - 1)}>Forrige</Button><Button size="sm" variant="outline" disabled={!nextPage} onClick={() => setPage(v => v + 1)}>Neste</Button></div>}
+        {(page > 0 || nextPage) && <div className="customer-paging"><Button size="sm" variant="outline" disabled={page === 0} onClick={() => {setPage(v => v - 1); setChosen('')}}>Forrige</Button><Button size="sm" variant="outline" disabled={!nextPage} onClick={() => {setPage(v => v + 1); setChosen('')}}>Neste</Button></div>}
       </aside>
       <section className="customer-detail" aria-label="Kundeprofil">
         <button className="customer-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={16} /> Kunderegister</button>
         {profile ? <>
           <header className="customer-heading"><span className="customer-tile"><Building2 /></span><div><h2>{profile.lead.company}</h2><p>{[profile.lead.industry, profile.lead.city].filter(Boolean).join(' · ') || profile.lead.kind.toUpperCase()}</p></div>
             <Button variant="outline" size="sm" onClick={() => onLead(profile!.lead)}>Åpne leadkort<ArrowUpRight /></Button></header>
-          <dl className="customer-facts"><div><dt>Kontaktperson</dt><dd>{profile.lead.contact || 'Ikke oppgitt'}</dd></div><div><dt>Telefon</dt><dd>{profile.lead.phone}</dd></div><div><dt>Organisasjonsnummer</dt><dd>{profile.org_number || 'Ikke oppgitt'}</dd></div></dl>
-          <BusinessFacts lead={profile.lead} />
+          <dl className="customer-facts"><div><dt>Kontaktperson</dt><dd>{profile.lead.contact || 'Ikke oppgitt'}</dd></div><div><dt>Telefon</dt><dd>{profile.lead.phone}</dd></div><div><dt>Organisasjonsnummer</dt><dd>{profile.org_number || String(profile.lead.enrichment?.organization_number || 'Ikke oppgitt')}</dd></div></dl>
+          {profile.lead.kind === 'b2b' && <BusinessFacts info={profile.lead.enrichment || {}} />}
           <section className="customer-stage"><div><h3>Salgsprosess</h3><p>{stageNames[profile.step - 1]} · {profile.step} av 8</p></div>
             <div className="customer-track" aria-hidden="true">{stageNames.map((name, i) => <i key={name} className={i < profile!.step ? 'on' : ''} />)}</div>
             {profile.step < 7 && !['sold','declined'].includes(profile.lead.status) && <label>Neste salgstrinn <select aria-label="Velg neste salgstrinn" disabled={busy} value="" onChange={e => void advance(Number(e.target.value))}><option value="" disabled>Velg trinn</option>{stageNames.slice(profile.step,7).map((name,i) => <option key={name} value={profile!.step + i + 1}>{name}</option>)}</select></label>}
@@ -171,13 +170,18 @@ export function CustomerWorkspace({ projectId, demo, leads, role, onLead, sales 
           </section><section><h3><CalendarDays/>Avtaler og neste steg</h3>
             {profile.lead.status === 'callback' && profile.lead.callback_at && <p>Ring tilbake · {dateLabel(profile.lead.callback_at)}</p>}
             {profile.tasks.map(t => <article className="customer-event" key={t.id}><strong>{t.title}</strong><time>{dateLabel(t.due_at)}</time></article>)}
-            {profile.meetings.map(m => <article className="customer-event" key={m.id}><strong>Møte · {meetingOutcomeLabel(m.outcome)}</strong><time>{dateLabel(m.starts_at)}</time></article>)}
+            {profile.meetings.map(m => <details className="customer-event" key={m.id}><summary>Møte · {meetingOutcomeLabel(m.outcome)} · {dateLabel(m.starts_at)}</summary>
+              <dl className="portfolio-details"><div><dt>Avsluttes</dt><dd>{m.ends_at ? dateLabel(m.ends_at) : 'Ikke registrert'}</dd></div>
+                {Object.entries(m.qualification || {}).map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Ikke registrert'}</dd></div>)}</dl></details>)}
             {!profile.tasks.length && !profile.meetings.length && !(profile.lead.status === 'callback' && profile.lead.callback_at) && <p className="customer-muted">Ingen oppfølging eller møter registrert.</p>}
-            <h3 className="customer-sales"><ClipboardList/>Salg</h3>
-            {profile.sales.map(s => <article className="customer-event" key={s.id}><strong>{money(s.amount_ore)}</strong><time>{dateLabel(s.created_at)}</time><p>{saleLabels[s.status] || s.status}</p></article>)}
+            <h3 ref={salesHeading} tabIndex={-1} className="customer-sales"><ClipboardList/>Salg</h3>
+            {profile.sales.map(s => <details className="customer-event" key={s.id}><summary>{money(s.amount_ore)} · {saleLabels[s.status] || s.status}</summary>
+              <dl className="portfolio-details"><div><dt>Registrert</dt><dd>{dateLabel(s.created_at)}</dd></div>
+                {s.allocation && <><div><dt>Selgerandel</dt><dd>{money(s.allocation.seller)}</dd></div><div><dt>Partnerandel</dt><dd>{money(s.allocation.partner)}</dd></div>
+                <div><dt>Hubandel</dt><dd>{money(s.allocation.hub)}</dd></div></>}</dl></details>)}
             {!profile.sales.length && <p className="customer-muted">Ingen registrerte salg å vise.</p>}
           </section></div>
-        </> : <p className="customer-muted">{details?.error ? 'Kundeprofilen er utilgjengelig.' : selected ? 'Henter kundeprofil…' : 'Velg en kunde fra registeret.'}</p>}
+        </> : <p className="customer-muted">{details?.error ? 'Kundeprofilen er utilgjengelig.' : selectedId ? 'Henter kundeprofil…' : 'Velg en kunde fra registeret.'}</p>}
       </section>
     </div> : manager && <section className="customer-quality"><header><div><h2>Samtaler til gjennomgang</h2><p>Manuelt flaggede samtaler i prosjektet.</p></div><select aria-label="Kvalitetssaker" value={String(reviewed)} onChange={e => {setReviewed(e.target.value === 'true'); setQualityPage(0)}}><option value="false">Åpne saker</option><option value="true">Gjennomgåtte saker</option></select></header>
       {cases.map(item => <article key={item.id}><div><h3>{item.company}</h3><time>{dateLabel(item.created_at)} · {outcomeNames[item.call_outcome]}</time></div><p><strong>Flagget fordi</strong><br/>{item.reason}</p>

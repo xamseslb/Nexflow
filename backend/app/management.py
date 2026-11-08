@@ -62,7 +62,8 @@ def change_access(project_id: UUID, user_id: UUID, body: AccessChange, db: Sessi
 @router.get("/portfolio/sales")
 def sales_portfolio(project_id: UUID | None = None, kind: Literal["b2b", "b2c", "both"] | None = None,
                     offset: int = Query(default=0, ge=0), db: Session = Db, team: str = "", project_type: str = "",
-                    metric: Literal["leads", "calls", "meetings", "buyers"] | None = None):
+                    metric: Literal["leads", "calls", "meetings", "buyers"] | None = None,
+                    stage: Literal["new", "callback", "meeting", "sold", "declined"] | None = None):
     if project_id:
         project_access(db, project_id, MANAGERS)
     scope = [Membership.user_id == db.info["user_id"], Membership.active.is_(True),
@@ -105,7 +106,8 @@ def sales_portfolio(project_id: UUID | None = None, kind: Literal["b2b", "b2c", 
 
     if metric:
         if metric == "buyers":
-            query = (select(Lead.id, Lead.company, Project.name.label("project"), func.count(Sale.id).label("sales"))
+            query = (select(Lead.id, Lead.id.label("lead_id"), Lead.project_id, Lead.company,
+                            Project.name.label("project"), func.count(Sale.id).label("sales"))
                      .select_from(Sale).join(Lead, Lead.id == Sale.lead_id).join(Project, Project.id == Sale.project_id)
                      .where(filtered).group_by(Lead.id, Lead.company, Project.name).order_by(Lead.company, Lead.id))
         else:
@@ -114,10 +116,16 @@ def sales_portfolio(project_id: UUID | None = None, kind: Literal["b2b", "b2c", 
                 "calls": (Call, Call.user_id, Call.outcome, Call.completed_at),
                 "meetings": (Meeting, Meeting.booker_id, Meeting.outcome, Meeting.starts_at),
             }[metric]
-            query = select(model.id, Lead.company, Project.name.label("project"), detail.label("detail"),
+            query = select(model.id, Lead.id.label("lead_id"), model.project_id, Lead.company, Project.name.label("project"), detail.label("detail"),
                            timestamp.label("date")).select_from(model).join(Project, Project.id == model.project_id)
+            if model is Call:
+                query = query.add_columns(Call.note)
+            elif model is Meeting:
+                query = query.add_columns(Meeting.ends_at, Meeting.qualification)
             if model is not Lead:
                 query = query.join(Lead, Lead.id == model.lead_id)
+            if metric == "leads" and stage:
+                query = query.where(Lead.status == stage)
             query = activity_scope(query, model, owner).order_by(timestamp.desc(), model.id)
         records = db.execute(query.offset(offset).limit(26)).mappings().all()
         return {"items": records[:25], "has_more": len(records) > 25}
@@ -140,7 +148,7 @@ def sales_portfolio(project_id: UUID | None = None, kind: Literal["b2b", "b2c", 
             "per_project": [{"project_id": pid, "project": name, "count": n, "total_ore": int(turnover)}
                             for pid, name, n, turnover in per_project],
             "items": [
-        {"id": sale.id, "project_id": sale.project_id, "project": project, "company": company,
+        {"id": sale.id, "lead_id": sale.lead_id, "project_id": sale.project_id, "project": project, "company": company,
          "product": product, "team": sale.team_at_sale, "seller_id": sale.seller_id, "created_at": sale.created_at, "status": sale.status,
          "amount_ore": sale.amount_ore, "allocation": sale.allocation}
         for sale, project, company, product in rows]}

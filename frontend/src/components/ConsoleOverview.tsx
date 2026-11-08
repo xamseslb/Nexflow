@@ -7,7 +7,7 @@ type Props = {
   meetings: Meeting[]
   sales: Sale[]
   onLeads: (filter?: string) => void
-  onMeetings: () => void
+  onMeetings: (id?: string) => void
   onSales: () => void
 }
 
@@ -30,7 +30,7 @@ export function ConsoleOverview({ leads, meetings, sales, onLeads, onMeetings, o
   const metrics = [
     { label: 'Klar til oppfølging', value: count('new') + count('callback'), icon: Phone, action: () => onLeads('available') },
     { label: 'Ring tilbake', value: count('callback'), icon: PhoneCall, action: () => onLeads('callback') },
-    { label: 'Kommende møter', value: upcoming.length, icon: CalendarDays, action: onMeetings },
+    { label: 'Kommende møter', value: upcoming.length, icon: CalendarDays, action: () => onMeetings() },
     { label: 'Registrert salgsverdi', value: money(sales.reduce((sum, s) => sum + s.amount_ore, 0)), icon: Wallet, action: onSales },
   ]
 
@@ -48,9 +48,9 @@ export function ConsoleOverview({ leads, meetings, sales, onLeads, onMeetings, o
         )}</div>
         <footer><TrendingUp size={16} />{sold} av {leads.length} leads har status solgt · {leads.length ? Math.round(sold / leads.length * 100) : 0} %</footer>
       </section>
-      <section className="day-panel"><header><h2>Neste møter</h2><button onClick={onMeetings}>Se alle møter <ArrowRight size={15}/></button></header>
-        {upcoming.slice(0, 2).map(m => <div key={m.id} className="day-appointment"><time dateTime={m.starts_at}>{hour.format(new Date(m.starts_at))}<small>{day.format(new Date(m.starts_at))}</small></time>
-          <div><strong>{leads.find(l => l.id === m.lead_id)?.company || 'Kvalifiseringsmøte'}</strong><small>Kvalifiseringsmøte</small></div></div>)}
+      <section className="day-panel"><header><h2>Neste møter</h2><button onClick={() => onMeetings()}>Se alle møter <ArrowRight size={15}/></button></header>
+        {upcoming.slice(0, 2).map(m => <button type="button" key={m.id} className="day-appointment" onClick={() => onMeetings(m.id)}><time dateTime={m.starts_at}>{hour.format(new Date(m.starts_at))}<small>{day.format(new Date(m.starts_at))}</small></time>
+          <div><strong>{leads.find(l => l.id === m.lead_id)?.company || 'Kvalifiseringsmøte'}</strong><small>Kvalifiseringsmøte</small></div><ChevronRight size={16} /></button>)}
         {!upcoming.length && <p className="day-empty">Ingen kommende møter. Du kan booke et møte fra kundens leadkort.</p>}
         <footer><Wallet size={16} />Godkjent salgsverdi <strong>{money(approved)}</strong></footer>
       </section>

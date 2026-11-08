@@ -53,6 +53,12 @@ cd backend
 API-dokumentasjon: http://127.0.0.1:8000/docs. Vite videresender `/api` til port 8000.
 Arbeider startes fra `backend` med `python -m app.worker` etter at den separate rollen er konfigurert.
 
+### Automatisk bedriftsoppslag
+
+Kjør `alembic upgrade head` fra backend og hold `python -m app.worker` i gang med `WORKER_DATABASE_URL` for den begrensede arbeiderrollen. Docker Compose har en egen `worker`-tjeneste. Nye og importerte B2B-leads legges i kø. Migreringen legger også eksisterende bedriftsleads i kø. Arbeideren bruker organisasjonsnummer eller et entydig, eksakt navnetreff og planlegger neste sjekk etter ett døgn. Midlertidige kildefeil prøves igjen etter 5, 10, 20 og 40 minutter, deretter etter ett døgn.
+
+Oppslaget bruker siste selskapsregnskap, registrerte lederroller og lesbar tekst fra bedriftens registrerte hjemmeside. Nettstedets regler for roboter respekteres. Fra `backend` kan du kjøre `python -m app.worker --lookup 996756246` for et ekte oppslag uten å skrive til databasen. I demonstrasjonen viser **Kunder → Se ekte bedriftsoppslag** et datert eksempel.
+
 ## Supabase og roller
 
 Opprett et eget Supabase-utviklingsprosjekt i valgt EU/EØS-region. Kjør migreringen med

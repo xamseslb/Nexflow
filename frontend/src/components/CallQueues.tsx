@@ -1,3 +1,4 @@
+import { BusinessFacts } from './BusinessFacts'
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ArrowRight, Check, ChevronRight, CircleCheck, CornerUpLeft, Flame, ListFilter, MapPin, Phone, Plus, RotateCcw, Search, Settings2, Snowflake, UserRound, UsersRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -211,6 +212,7 @@ export function CallQueues({ project, leads, demo, onRefresh, demoHistory, onDem
           session.lead ? <div className={`cq-call-workspace ${session.callId ? 'cq-in-call' : ''}`}><div className="cq-dossier"><div className="cq-contact"><span className="cq-monogram">{session.lead.company.slice(0, 1)}</span><div><h3 ref={contactHeading} tabIndex={-1}>{session.lead.company}</h3><p>{session.lead.contact || 'Ingen kontaktperson'} · {session.lead.kind.toUpperCase()}</p></div></div>
             <div className="cq-contact-meta"><span><Phone />{session.lead.phone}</span>{session.lead.city && <span><MapPin />{session.lead.city}</span>}</div>
             {session.lead.summary && <p className="cq-summary">{session.lead.summary}</p>}
+            {session.lead.kind === 'b2b' && <BusinessFacts info={session.lead.enrichment || {}} compact />}
             <CallHistory key={session.lead.id} projectId={project.id} leadId={session.lead.id} manager={manager}
               demoEntries={demo ? demoHistory?.[session.lead.id] || example.history[session.lead.id] || [] : undefined} />
             </div><div className="cq-dial-panel">{session.callId ? <OutcomeForm key={session.callId} busy={busy || !canWork} onFinish={finish} /> :

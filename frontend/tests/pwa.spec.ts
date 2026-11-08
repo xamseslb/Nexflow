@@ -16,6 +16,7 @@ test('PWA installs static shell, opens offline, never caches API responses', asy
   await page.reload()
   await expect(page.getByRole('button', { name: 'Åpne demonstrasjon' })).toBeVisible()
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
+  await page.getByRole('button', { name: 'Hopp over' }).click()
   await page.getByRole('button', { name: /Fjord & Form/ }).click()
   await expect(page.getByRole('button', { name: 'Simuler samtale' })).toBeDisabled()
   await context.setOffline(false)

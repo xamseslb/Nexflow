@@ -64,7 +64,7 @@ export function MeetingActions({ meeting, projectId, company, demo, sold, role, 
     finally { setBusy(false) }
   }
   return <div className="mt-4 flex flex-wrap gap-2">
-    <Button size="sm" variant="outline" onClick={() => downloadCalendar(meeting, company)}><Download/>Last ned kalenderfil</Button>
+    <Button data-tour="calendar" size="sm" variant="outline" onClick={() => downloadCalendar(meeting, company)}><Download/>Last ned kalenderfil</Button>
     {mayRecord && meeting.outcome === 'booked' && <Button size="sm" variant="outline" onClick={() => { setError(''); setOpen(true) }}>Registrer møteutfall</Button>}
     <Dialog open={open} onOpenChange={value => {if (!busy) setOpen(value)}} title="Registrer møteutfall" description={company}>
       {new Date(meeting.ends_at).getTime() > Date.now() ? <p>Møteutfallet kan registreres etter møtets slutt.</p> :

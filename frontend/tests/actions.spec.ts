@@ -33,6 +33,7 @@ test('project actions, help, CSV, receipt preview and approval', async ({page}) 
 
 test('date filter, diagram keyboard inspection and invalid ranges', async ({page}) => {
   await go(page, 'Rapporter')
+  await page.getByRole('button',{name:'Prosjektanalyse',exact:true}).click()
   await page.getByLabel('Fra',{exact:true}).fill('2026-10-18')
   await page.getByLabel('Til',{exact:true}).fill('2026-10-15')
   await page.getByRole('button',{name:'Vis periode'}).click()

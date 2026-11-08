@@ -10,7 +10,7 @@ import './salesPortfolio.css'
 type Item = Sale & { project: string; project_id: string; company: string; product: string; seller_id: string; seller_name?: string; team: string | null }
 type ProjectTotal = { project_id: string; project: string; count: number; total_ore: number }
 type Result = { items: Item[]; teams: string[]; project_types: string[]; activity: { leads: number; calls: number; meetings: number; buyers: number }; per_project?: ProjectTotal[]; count: number; total_ore: number }
-type Props = { projects: Project[]; currentProject: string; demo: boolean; demoSales: Sale[]; demoLeads: Lead[]; demoHistory: Record<string, CallEntry[]>; demoMeetings: Meeting[] }
+type Props = { active: boolean; onCustomer: (project: string, lead: string, sales?: boolean) => void; projects: Project[]; currentProject: string; demo: boolean; demoSales: Sale[]; demoLeads: Lead[]; demoHistory: Record<string, CallEntry[]>; demoMeetings: Meeting[] }
 type Filters = { project_id: string; project_type: string; kind: string; team: string }
 const all: Filters = { project_id: '', project_type: '', kind: '', team: '' }
 const formatMoney = new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', maximumFractionDigits: 2 })
@@ -18,7 +18,7 @@ const amount = (ore: number) => formatMoney.format(ore / 100)
 const date = (value: string) => new Date(value).toLocaleDateString('nb-NO', { timeZone: 'Europe/Oslo' })
 const statusNames: Record<string, string> = { approved: 'Godkjent', registered: 'Til godkjenning', awaiting_confirmation: 'Venter på bekreftelse' }
 
-function demoPortfolio(props: Props, filters: Filters, offset: number) {
+function demoPortfolio(props: Omit<Props, 'onCustomer' | 'active'>, filters: Filters, offset: number) {
   const managed = props.projects.filter(project => ['admin', 'leader'].includes(project.role))
   const typeOf = (project: Project) => project.project_type || ''
   const scoped = managed.filter(p => (!filters.project_id || p.id === filters.project_id) &&
@@ -38,15 +38,15 @@ function demoPortfolio(props: Props, filters: Filters, offset: number) {
     for (const lead of leads) {
       teams.add(teamOf(lead.id))
       if (!matchesTeam(lead.id)) continue
-      const row = { id: lead.id, company: lead.company, project: project.name }
+      const row = { id: lead.id, lead_id: lead.id, project_id: project.id, company: lead.company, project: project.name }
       details.leads.push({ ...row, detail: lead.contact })
       if (saleCounts.has(lead.id)) details.buyers.push({ ...row, sales: saleCounts.get(lead.id) })
       if (selected) for (const call of props.demoHistory[lead.id] || []) {
-        details.calls.push({ ...row, id: call.id, detail: call.outcome, date: call.completed_at })
+        details.calls.push({ ...row, id: call.id, detail: call.outcome, date: call.completed_at, note: call.note })
       }
     }
     for (const meeting of meetings.filter(m => matchesTeam(m.lead_id))) {
-      details.meetings.push({ id: meeting.id, company: leads.find(l => l.id === meeting.lead_id)?.company || 'Demokunde',
+      details.meetings.push({ id: meeting.id, lead_id: meeting.lead_id, project_id: project.id, qualification: meeting.qualification, company: leads.find(l => l.id === meeting.lead_id)?.company || 'Demokunde',
         project: project.name, detail: meeting.outcome, date: meeting.starts_at })
     }
     if (sales.length) perProject.push({ project_id: project.id, project: project.name, count: sales.length, total_ore: sales.reduce((sum,sale) => sum + sale.amount_ore, 0) })
@@ -129,10 +129,11 @@ export function SalesPortfolio(props: Props) {
           <p>Teamfilteret bruker teamet ved registrering for salg og kjøpende kunder. For leads, fullførte samtaler og møter brukes dagens team for henholdsvis tildelt selger, den som ringte og møtebookeren.</p>
           {demo && <p>Eksempelkontaktene er fordelt på Demoteam og Møtebooking. Endringer i det aktive prosjektet inngår i tallene.</p>}</details>
       </>}</div>
-    {metric && <PortfolioActivity metric={metric} query={new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()} demoRows={demoData?.details[metric]} onClose={() => setMetric(null)} />}
-    <Dialog open={!!detail} onOpenChange={v => !v && setDetail(null)} title={detail?.company || 'Salgsdetaljer'} description={detail?.project || ''}>
+    {props.active && metric && <PortfolioActivity onCustomer={props.onCustomer} metric={metric} query={new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()} demoRows={demoData?.details[metric]} onClose={() => setMetric(null)} />}
+    <Dialog open={props.active && !!detail} onOpenChange={v => !v && setDetail(null)} title={detail?.company || 'Salgsdetaljer'} description={detail?.project || ''}>
       {detail && <dl className="portfolio-details">{Object.entries({ Produkt: detail.product, Selger: detail.seller_name || detail.seller_id, 'Team ved salg': detail.team || 'Ikke registrert', Status: statusNames[detail.status] || detail.status,
         Dato: date(detail.created_at), 'Beløp eks. mva.': amount(detail.amount_ore), Selgerandel: amount(detail.allocation.seller), Partnerandel: amount(detail.allocation.partner), Hubandel: amount(detail.allocation.hub) }).map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+      {detail && <Button variant="outline" onClick={() => props.onCustomer(detail.project_id, detail.lead_id, true)}>Se kundens salg<ChevronRight /></Button>}
     </Dialog>
   </section>
 }

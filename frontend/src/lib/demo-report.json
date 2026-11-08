@@ -15,243 +15,243 @@
   "series": [
     {
       "date": "2026-10-02",
-      "leads": 8,
+      "leads": 13,
       "calls": 12,
-      "meetings": 1,
-      "sales": 0,
-      "revenue_ore": 0
-    },
-    {
-      "date": "2026-10-03",
-      "leads": 9,
-      "calls": 13,
       "meetings": 2,
-      "sales": 1,
-      "revenue_ore": 1490000
-    },
-    {
-      "date": "2026-10-04",
-      "leads": 10,
-      "calls": 14,
-      "meetings": 3,
       "sales": 2,
       "revenue_ore": 2980000
     },
     {
+      "date": "2026-10-03",
+      "leads": 2,
+      "calls": 0,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
+    },
+    {
+      "date": "2026-10-04",
+      "leads": 2,
+      "calls": 4,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
+    },
+    {
       "date": "2026-10-05",
-      "leads": 11,
-      "calls": 15,
-      "meetings": 1,
-      "sales": 3,
-      "revenue_ore": 4470000
+      "leads": 19,
+      "calls": 22,
+      "meetings": 4,
+      "sales": 1,
+      "revenue_ore": 1990000
     },
     {
       "date": "2026-10-06",
-      "leads": 12,
-      "calls": 16,
-      "meetings": 2,
+      "leads": 9,
+      "calls": 23,
+      "meetings": 1,
       "sales": 0,
       "revenue_ore": 0
     },
     {
       "date": "2026-10-07",
-      "leads": 13,
-      "calls": 17,
-      "meetings": 3,
-      "sales": 1,
-      "revenue_ore": 1490000
-    },
-    {
-      "date": "2026-10-08",
-      "leads": 14,
-      "calls": 18,
-      "meetings": 1,
-      "sales": 2,
-      "revenue_ore": 2980000
-    },
-    {
-      "date": "2026-10-09",
-      "leads": 8,
-      "calls": 19,
-      "meetings": 2,
-      "sales": 3,
-      "revenue_ore": 4470000
-    },
-    {
-      "date": "2026-10-10",
-      "leads": 9,
-      "calls": 20,
-      "meetings": 3,
-      "sales": 0,
-      "revenue_ore": 0
-    },
-    {
-      "date": "2026-10-11",
-      "leads": 10,
-      "calls": 21,
-      "meetings": 1,
-      "sales": 1,
-      "revenue_ore": 1490000
-    },
-    {
-      "date": "2026-10-12",
-      "leads": 11,
-      "calls": 22,
-      "meetings": 2,
-      "sales": 2,
-      "revenue_ore": 2980000
-    },
-    {
-      "date": "2026-10-13",
-      "leads": 12,
-      "calls": 12,
-      "meetings": 3,
-      "sales": 3,
-      "revenue_ore": 4470000
-    },
-    {
-      "date": "2026-10-14",
-      "leads": 13,
-      "calls": 13,
-      "meetings": 1,
-      "sales": 0,
-      "revenue_ore": 0
-    },
-    {
-      "date": "2026-10-15",
-      "leads": 14,
-      "calls": 14,
-      "meetings": 2,
-      "sales": 1,
-      "revenue_ore": 1490000
-    },
-    {
-      "date": "2026-10-16",
-      "leads": 8,
-      "calls": 15,
-      "meetings": 3,
-      "sales": 2,
-      "revenue_ore": 2980000
-    },
-    {
-      "date": "2026-10-17",
-      "leads": 9,
+      "leads": 18,
       "calls": 16,
       "meetings": 1,
       "sales": 3,
-      "revenue_ore": 4470000
+      "revenue_ore": 4970000
+    },
+    {
+      "date": "2026-10-08",
+      "leads": 16,
+      "calls": 23,
+      "meetings": 3,
+      "sales": 2,
+      "revenue_ore": 2380000
+    },
+    {
+      "date": "2026-10-09",
+      "leads": 16,
+      "calls": 14,
+      "meetings": 1,
+      "sales": 1,
+      "revenue_ore": 1190000
+    },
+    {
+      "date": "2026-10-10",
+      "leads": 3,
+      "calls": 8,
+      "meetings": 0,
+      "sales": 1,
+      "revenue_ore": 990000
+    },
+    {
+      "date": "2026-10-11",
+      "leads": 1,
+      "calls": 8,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
+    },
+    {
+      "date": "2026-10-12",
+      "leads": 18,
+      "calls": 36,
+      "meetings": 2,
+      "sales": 1,
+      "revenue_ore": 1190000
+    },
+    {
+      "date": "2026-10-13",
+      "leads": 16,
+      "calls": 31,
+      "meetings": 2,
+      "sales": 0,
+      "revenue_ore": 0
+    },
+    {
+      "date": "2026-10-14",
+      "leads": 14,
+      "calls": 16,
+      "meetings": 5,
+      "sales": 1,
+      "revenue_ore": 1990000
+    },
+    {
+      "date": "2026-10-15",
+      "leads": 2,
+      "calls": 15,
+      "meetings": 1,
+      "sales": 1,
+      "revenue_ore": 990000
+    },
+    {
+      "date": "2026-10-16",
+      "leads": 13,
+      "calls": 31,
+      "meetings": 5,
+      "sales": 2,
+      "revenue_ore": 2180000
+    },
+    {
+      "date": "2026-10-17",
+      "leads": 0,
+      "calls": 2,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
     },
     {
       "date": "2026-10-18",
-      "leads": 10,
-      "calls": 17,
-      "meetings": 2,
+      "leads": 1,
+      "calls": 2,
+      "meetings": 0,
       "sales": 0,
       "revenue_ore": 0
     },
     {
       "date": "2026-10-19",
-      "leads": 11,
-      "calls": 18,
-      "meetings": 3,
-      "sales": 1,
-      "revenue_ore": 1490000
+      "leads": 23,
+      "calls": 31,
+      "meetings": 7,
+      "sales": 4,
+      "revenue_ore": 5960000
     },
     {
       "date": "2026-10-20",
-      "leads": 12,
-      "calls": 19,
+      "leads": 15,
+      "calls": 16,
       "meetings": 1,
       "sales": 2,
-      "revenue_ore": 2980000
+      "revenue_ore": 3180000
     },
     {
       "date": "2026-10-21",
-      "leads": 13,
-      "calls": 20,
-      "meetings": 2,
-      "sales": 3,
-      "revenue_ore": 4470000
+      "leads": 20,
+      "calls": 38,
+      "meetings": 7,
+      "sales": 2,
+      "revenue_ore": 3980000
     },
     {
       "date": "2026-10-22",
-      "leads": 14,
-      "calls": 21,
+      "leads": 7,
+      "calls": 14,
       "meetings": 3,
-      "sales": 0,
-      "revenue_ore": 0
+      "sales": 3,
+      "revenue_ore": 3670000
     },
     {
       "date": "2026-10-23",
-      "leads": 8,
-      "calls": 22,
-      "meetings": 1,
-      "sales": 1,
-      "revenue_ore": 1490000
+      "leads": 18,
+      "calls": 23,
+      "meetings": 2,
+      "sales": 2,
+      "revenue_ore": 3180000
     },
     {
       "date": "2026-10-24",
-      "leads": 9,
-      "calls": 12,
-      "meetings": 2,
-      "sales": 2,
-      "revenue_ore": 2980000
-    },
-    {
-      "date": "2026-10-25",
-      "leads": 10,
-      "calls": 13,
-      "meetings": 3,
-      "sales": 3,
-      "revenue_ore": 4470000
-    },
-    {
-      "date": "2026-10-26",
-      "leads": 11,
-      "calls": 14,
-      "meetings": 1,
+      "leads": 1,
+      "calls": 2,
+      "meetings": 0,
       "sales": 0,
       "revenue_ore": 0
     },
     {
+      "date": "2026-10-25",
+      "leads": 5,
+      "calls": 4,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
+    },
+    {
+      "date": "2026-10-26",
+      "leads": 13,
+      "calls": 18,
+      "meetings": 3,
+      "sales": 7,
+      "revenue_ore": 11430000
+    },
+    {
       "date": "2026-10-27",
-      "leads": 12,
-      "calls": 15,
-      "meetings": 2,
-      "sales": 1,
-      "revenue_ore": 1490000
+      "leads": 16,
+      "calls": 12,
+      "meetings": 1,
+      "sales": 2,
+      "revenue_ore": 3180000
     },
     {
       "date": "2026-10-28",
-      "leads": 13,
-      "calls": 16,
-      "meetings": 3,
-      "sales": 2,
-      "revenue_ore": 2980000
+      "leads": 12,
+      "calls": 26,
+      "meetings": 4,
+      "sales": 4,
+      "revenue_ore": 5660000
     },
     {
       "date": "2026-10-29",
       "leads": 14,
-      "calls": 17,
-      "meetings": 1,
-      "sales": 3,
-      "revenue_ore": 4470000
+      "calls": 25,
+      "meetings": 2,
+      "sales": 2,
+      "revenue_ore": 2980000
     },
     {
       "date": "2026-10-30",
-      "leads": 8,
-      "calls": 18,
-      "meetings": 2,
+      "leads": 16,
+      "calls": 25,
+      "meetings": 3,
       "sales": 0,
       "revenue_ore": 0
     },
     {
       "date": "2026-10-31",
-      "leads": 9,
-      "calls": 19,
-      "meetings": 3,
-      "sales": 1,
-      "revenue_ore": 1490000
+      "leads": 2,
+      "calls": 1,
+      "meetings": 0,
+      "sales": 0,
+      "revenue_ore": 0
     }
   ],
   "pipeline": [

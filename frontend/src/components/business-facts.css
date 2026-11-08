@@ -1,0 +1,12 @@
+.business-facts { min-width: 0; margin-block: 1rem; padding: 1rem; border: 1px solid #d7e0dd; border-radius: 10px; background: #fff; color: #1e302c; }
+.business-facts h3, .business-facts summary { font-size: 1rem; font-weight: 650; }
+.business-facts summary { cursor: pointer; }
+.business-facts h4 { font-size: .88rem; font-weight: 650; margin: 0 0 .35rem; }
+.business-facts p { max-width: 75ch; font-size: .91rem; line-height: 1.55; margin: .45rem 0; }
+.business-facts section, .business-facts > dl { border-top: 1px solid #e1e8e5; margin-top: .8rem; padding-top: .8rem; }
+.business-facts dl { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%, 145px),1fr)); gap: .8rem; }
+.business-facts dt, .business-facts small { font-size: .76rem; color: #50615a; }
+.business-facts small { display: block; margin-top: .45rem; }
+.business-facts dd { font-size: .88rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; margin: .15rem 0 0; }
+.business-facts a { color: #14614c; text-decoration: underline; text-underline-offset: .15em; }
+.customer-tools:has(.business-example) { justify-content: space-between; gap: .5rem; flex-wrap: wrap; }

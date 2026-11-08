@@ -76,9 +76,9 @@ def profile(project_id: UUID, lead_id: UUID, db: Session = Db):
         "calls": calls,
         "tasks": [{"id": t.id, "title": t.title, "due_at": t.due_at}
                   for t in db.scalars(tasks.order_by(FollowUp.due_at, FollowUp.id).limit(10))],
-        "meetings": [{"id": m.id, "starts_at": m.starts_at, "outcome": m.outcome}
+        "meetings": [{"id": m.id, "starts_at": m.starts_at, "ends_at": m.ends_at, "outcome": m.outcome, "qualification": m.qualification}
                      for m in db.scalars(meetings.order_by(Meeting.starts_at.desc(), Meeting.id).limit(10))],
-        "sales": [{"id": s.id, "created_at": s.created_at, "status": s.status, "amount_ore": s.amount_ore}
+        "sales": [{"id": s.id, "created_at": s.created_at, "status": s.status, "amount_ore": s.amount_ore, "allocation": s.allocation}
                   for s in db.scalars(sales.order_by(Sale.created_at.desc(), Sale.id).limit(10))],
     }
 

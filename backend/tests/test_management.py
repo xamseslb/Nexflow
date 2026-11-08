@@ -124,11 +124,16 @@ def test_portfolio_types_team_activities_and_historical_buyers(tenant_data):
         new_team = sales_portfolio(pid, None, 0, db, team="Nye team")
         assert new_team["activity"] == {"leads": 1, "calls": 1, "meetings": 1, "buyers": 0}
         assert new_team["per_project"] == []
+        lead_status = db.get(Lead, lead_id).status
+        assert sales_portfolio(pid, None, 0, db, metric="leads", stage=lead_status)["items"][0]["id"] == lead_id
+        other_status = "declined" if lead_status != "declined" else "new"
+        assert sales_portfolio(pid, None, 0, db, metric="leads", stage=other_status)["items"] == []
         for metric in ("leads", "calls", "meetings", "buyers"):
             for team, expected in (("Gamle team", old_team), ("Nye team", new_team)):
                 details = sales_portfolio(None, None, 0, db, metric=metric, team=team)
                 assert len(details["items"]) == expected["activity"][metric]
                 assert all(row["project"] == "Isolated test project" for row in details["items"])
+                assert all(row["lead_id"] == lead_id and row["project_id"] == pid for row in details["items"])
                 assert details["has_more"] is False
             assert sales_portfolio(None, None, 1, db, metric=metric)["items"] == []
             with pytest.raises(HTTPException) as denied:
