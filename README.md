@@ -124,6 +124,17 @@ databasebrukeren er klargjort, og arbeideren kan kjøres lokalt med
 krever en kjørende arbeider; API-et alene utfører ikke køjobbene.
 Gratis-API-et kan gå i hvile og bruke minst 50 sekunder på første forespørsel.
 
+Pilotkontroller utført: Render-helse 200, uinnlogget prosjektforespørsel 401,
+eksakt Netlify-origin i CORS, migrering 0011 og RLS på 15 CRM-tabeller.
+Den faktiske begrensede databasebrukeren kan lese pilotadministratorens prosjekt,
+mens en identitet uten medlemskap får null prosjekter og leads. Lokale API-lesetester
+mot Supabase bestod for 11 ruter. Dette erstatter ikke full testing med to ekte
+brukerøkter, ulike partnere, filopplasting og samtidige skriv.
+
+«Pilot – bedrifter» har Hot-, Cold- og Winback-køer og ett Bouvet Norge AS-testkort,
+sperret for oppringing. Ett reelt oppslag er kjørt og lagret med kilde/tidspunkt.
+Neste jobb ligger i kø; den kjører først når arbeideren startes igjen.
+
 1. Kjør alle Alembic-migreringene separat med administrativ databaseforbindelse.
 2. Opprett de begrensede LOGIN-rollene beskrevet ovenfor. Sett `DATABASE_URL` bare
    på API-tjenesten og `WORKER_DATABASE_URL` bare på arbeideren. Bruk TLS og riktig
