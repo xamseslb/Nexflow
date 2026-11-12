@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import httpx
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import String, cast, create_engine, or_, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -37,8 +37,13 @@ def run_once(engine, client: httpx.Client) -> bool:
         if unsafe:
             raise RuntimeError("Worker requires a restricted login role")
         db.execute(text("SET LOCAL ROLE hub_worker"))
+        # Existing missing-phone contacts get the new website lookup once, without
+        # waiting a day or resetting daily discovery quotas. Normal retries remain bounded.
+        unsearched = select(cast(Lead.id, String)).where(Lead.kind == "b2b", Lead.review_required.is_(True),
+            Lead.status == "new", Lead.enrichment["website_phone_status"].astext.is_(None),
+            Lead.enrichment["lookup_status"].astext == "ok")
         job = db.scalar(select(Job).where(Job.kind == "brreg_enrichment", Job.status == "pending",
-                        Job.available_at <= datetime.now(timezone.utc))
+                        or_(Job.available_at <= datetime.now(timezone.utc), Job.payload["lead_id"].astext.in_(unsearched)))
                         .order_by(Job.available_at, Job.id).with_for_update(skip_locked=True).limit(1))
         if not job:
             return False

@@ -5,13 +5,15 @@ from datetime import datetime, timezone
 import httpx
 
 from .company_site import website_data
+from .company_site import site_url, SiteUnavailable
+from .company_phone import normal_phone
 
 ENTITIES = "https://data.brreg.no/enhetsregisteret/api/enheter"
 ACCOUNTS = "https://data.brreg.no/regnskapsregisteret/regnskap"
 TEXT_FIELDS = ("name", "industry", "city", "source", "fetched_at", "organization_number", "lookup_status",
                "chief_executive", "board_chair", "roles_status", "roles_checked_at", "period_end", "currency",
                "accounts_status", "accounts_checked_at", "website_url", "website_status", "website_summary",
-               "website_checked_at")
+               "website_checked_at", "website_phone_status")
 AMOUNTS = ("revenue", "operating_profit", "equity")
 
 
@@ -22,6 +24,16 @@ def public_facts(info):
             result[key] = info[key]
     if type(info.get("employees")) is int and info["employees"] >= 0:
         result["employees"] = info["employees"]
+    if isinstance(info.get("website_phones"), list):
+        result["website_phones"] = []
+        for item in info["website_phones"][:5]:
+            if not isinstance(item, dict) or not normal_phone(item.get("phone")):
+                continue
+            try:
+                source = site_url(item.get("source_url"))
+            except (SiteUnavailable, ValueError, UnicodeError):
+                continue
+            result["website_phones"].append({"phone": normal_phone(item["phone"]), "source_url": source})
     return result
 
 
@@ -95,7 +107,7 @@ def company_data(org_number, client, previous=None, *, read_site=website_data):
     sources = (
         ("roles", ("chief_executive", "board_chair"), lambda: management(get_json(client, f"{ENTITIES}/{org_number}/roller"))),
         ("accounts", (*AMOUNTS, "period_end", "currency"), lambda: financials(get_json(client, f"{ACCOUNTS}/{org_number}"), org_number)),
-        ("website", ("website_url", "website_summary"), lambda: read_site(company.get("hjemmeside"))),
+        ("website", ("website_url", "website_summary", "website_phones"), lambda: read_site(company.get("hjemmeside"))),
     )
     for name, fields, read in sources:
         timestamp = name + "_checked_at"
@@ -105,5 +117,7 @@ def company_data(org_number, client, previous=None, *, read_site=website_data):
         except (httpx.HTTPError, OSError, ValueError):
             result.update({k: cached[k] for k in (*fields, timestamp) if k in cached})
             result[name + "_status"] = "temporary_error"
+            if name == "website":
+                result["website_phone_status"] = "temporary_error"
     return public_facts(result)
 

@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from .api import Db, MANAGERS, audit, project_access
 from .company_registry import ENTITIES, get_json
+from .company_registry import public_facts
+from .company_phone import normal_phone
 from .models import CallList, DiscoveryRecord, DiscoverySettings, Job, Lead, Project
 from .schemas import Input
 
@@ -39,17 +41,6 @@ class ReviewChange(Input):
     decision: str = Field(pattern="^(approve|reject)$")
     phone: str = Field(default="", max_length=30)
     confirmed_business_number: bool = False
-
-
-def normal_phone(value):
-    if not isinstance(value, str):
-        return ""
-    digits = re.sub(r"[\s().-]", "", value)
-    if digits.startswith("0047"):
-        digits = "+47" + digits[4:]
-    if re.fullmatch(r"[2-9][0-9]{7}", digits):
-        digits = "+47" + digits
-    return digits if re.fullmatch(r"\+47[2-9][0-9]{7}", digits) else ""
 
 
 def imported_today(db, project_id):
@@ -108,8 +99,16 @@ def records(project_id: UUID, status: str = Query("all", pattern="^(all|imported
     if status != "all":
         query = query.where(DiscoveryRecord.status == status)
     rows = list(db.scalars(query.order_by(DiscoveryRecord.created_at.desc(), DiscoveryRecord.id).offset(page*30).limit(31)))
-    return {"items": [{key: getattr(row, key) for key in ("id", "company", "org_number", "status", "reason",
-            "lead_id", "source_url", "created_at")} for row in rows[:30]], "has_more": len(rows) > 30}
+    leads = {lead.id: lead for lead in db.scalars(select(Lead).where(Lead.project_id == project_id,
+        Lead.id.in_([row.lead_id for row in rows[:30] if row.lead_id])))}
+    items = []
+    for row in rows[:30]:
+        item = {key: getattr(row, key) for key in ("id", "company", "org_number", "status", "reason",
+            "lead_id", "source_url", "created_at")}
+        facts = public_facts(leads[row.lead_id].enrichment or {}) if row.lead_id in leads else {}
+        item.update({key: facts.get(key) for key in ("website_phones", "website_phone_status", "website_checked_at")})
+        items.append(item)
+    return {"items": items, "has_more": len(rows) > 30}
 
 
 @router.post("/records/{record_id}/review")

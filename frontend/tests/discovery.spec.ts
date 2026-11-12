@@ -21,7 +21,7 @@ test('company discovery saves industries, pauses, reviews and links to the queue
     }
     if(path.endsWith('/discovery/records')) {
       queries.push(url.search)
-      return route.fulfill({json:{items:[{id:'record',company:'Oslo Test AS',org_number:'987654321',status:reviewStatus,reason:'Mangler telefon',lead_id:'lead',source_url:'https://data.brreg.no/enhetsregisteret/api/enheter/987654321',created_at:'2026-11-12T12:00:00Z'}],has_more:url.searchParams.get('page')==='0'}})
+      return route.fulfill({json:{items:[{id:'record',company:'Oslo Test AS',org_number:'987654321',status:reviewStatus,reason:'Mangler telefon',lead_id:'lead',source_url:'https://data.brreg.no/enhetsregisteret/api/enheter/987654321',created_at:'2026-11-12T12:00:00Z',website_phone_status:'found',website_checked_at:'2026-11-12T12:00:00Z',website_phones:[{phone:'+4722000000',source_url:'https://example.no/kontakt'}]}],has_more:url.searchParams.get('page')==='0'}})
     }
     if(path.endsWith('/discovery')) {
       if(req.method()==='PATCH') {settings={...settings,...req.postDataJSON()};bodies.push(req.postDataJSON());return route.fulfill({json:settings})}
@@ -55,6 +55,9 @@ test('company discovery saves industries, pauses, reviews and links to the queue
   await page.getByRole('button',{name:'Forrige',exact:true}).click()
   await page.getByRole('button',{name:'Gjennomgå',exact:true}).click()
   const dialog=page.getByRole('dialog')
+  await expect(dialog.getByLabel('Bedriftens telefonnummer')).toHaveValue('+4722000000')
+  await expect(dialog.getByRole('link',{name:'Se kilde'})).toHaveAttribute('href','https://example.no/kontakt')
+  await expect(dialog.getByRole('button',{name:'Godkjenn og legg i Cold'})).toBeDisabled()
   await dialog.getByLabel('Bedriftens telefonnummer').fill('22 00 00 00')
   await dialog.getByRole('checkbox').check()
   await dialog.getByRole('button',{name:'Godkjenn og legg i Cold'}).click()

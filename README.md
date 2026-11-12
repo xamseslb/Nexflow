@@ -235,6 +235,16 @@ køvalg. Leder må kontrollere bedriftsnummeret og godkjenne, eller avvise treff
 Importhistorikken viser kilde, tidspunkt og begrunnelse og lenker til kundekortet.
 Selve oppringingen bruker fortsatt backendens vanlige tillatelseskontroll.
 
+Nettsideoppslaget undersøker registrert hjemmeside og høyst to lenkede kontakt-/om-oss-sider
+på samme nettsted. Eksplisitte `tel:`-lenker og merkede norske telefonnumre lagres
+som forslag med kilde og tidspunkt. Robots-regler, SSRF-beskyttelse og den eksisterende
+15-sekundersgrensen gjelder også kontaktsidene. Usikre eller manglende treff blir ikke
+telefonnumre på leadet: lederen må kontrollere og godkjenne under «Gjennomgå».
+Et enkelt ferskt treff forhåndsutfylles, men kontrollboksen er alltid tom. Eksisterende
+kontakter til gjennomgang uten tidligere telefonsøk undersøkes én gang ved neste
+timekjøring; ellers følger oppslaget vanlig døgnoppdatering. Ingen betalt søke-API
+brukes. Bedrifter uten registrert hjemmeside krever manuell kildekontroll.
+
 Utrullingsrekkefølge: kjør migrasjon **0012** med databaseeier, publiser ny API
 og frontend, og oppdater deretter timejobbens kode. Den nye migrasjonen gir den
 eksisterende begrensede arbeiderrollen målrettet innsettingsrett, med RLS og

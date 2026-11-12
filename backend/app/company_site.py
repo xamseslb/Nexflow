@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import httpx
+from .company_phone import contacts
 
 BOT = "NexflowBot"
 LIMIT = 800_000
@@ -112,36 +113,55 @@ def summarize(html):
     return result if len(result) <= 500 else result[:497].rsplit(" ", 1)[0] + "…"
 
 
+def read_page(url, deadline, *, origin=None):
+    """Every redirect and contact page gets DNS, robots and origin checks."""
+    for _ in range(4):
+        if origin and urlsplit(url).netloc != origin:
+            raise SiteUnavailable("unsupported")
+        status, _, rules = fetch(urljoin(url, "/robots.txt"), deadline)
+        if status == 429 or status >= 500:
+            raise httpx.RequestError("Website temporarily unavailable")
+        if status == 200:
+            robots = RobotFileParser()
+            robots.parse(rules.splitlines())
+            if not robots.can_fetch(BOT, url):
+                raise SiteUnavailable("restricted")
+        elif status not in {404, 410}:
+            raise SiteUnavailable("restricted")
+        status, kind, body = fetch(url, deadline)
+        if status in {301, 302, 303, 307, 308} and kind:
+            url = site_url(urljoin(url, kind))
+            continue
+        if status == 429 or status >= 500:
+            raise httpx.RequestError("Website temporarily unavailable")
+        if status != 200 or kind not in {"text/html", "application/xhtml+xml"}:
+            raise SiteUnavailable("unavailable")
+        return url, body
+    raise SiteUnavailable("unavailable")
+
+
 def website_data(homepage):
     if not homepage:
-        return {"website_status": "missing"}
+        return {"website_status": "missing", "website_phone_status": "missing_website", "website_phones": []}
     try:
         url = site_url(homepage)
         deadline = time.monotonic() + 15
-        for _ in range(4):
-            robots_url = urljoin(url, "/robots.txt")
-            status, _, rules = fetch(robots_url, deadline)
-            if status == 429 or status >= 500:
-                raise httpx.RequestError("Website temporarily unavailable")
-            if status == 200:
-                robots = RobotFileParser()
-                robots.parse(rules.splitlines())
-                if not robots.can_fetch(BOT, url):
-                    raise SiteUnavailable("restricted")
-            elif status not in {404, 410}:
-                raise SiteUnavailable("restricted")
-            status, kind, body = fetch(url, deadline)
-            if status in {301, 302, 303, 307, 308} and kind:
-                url = site_url(urljoin(url, kind))
-                continue
-            if status == 429 or status >= 500:
-                raise httpx.RequestError("Website temporarily unavailable")
-            if status != 200 or kind not in {"text/html", "application/xhtml+xml"}:
-                raise SiteUnavailable("unavailable")
-            summary = summarize(body)
-            return {"website_url": url, "website_summary": summary, "website_status": "ok" if summary else "no_text"}
+        url, body = read_page(url, deadline)
+        summary = summarize(body)
+        phones, links = contacts(body, url)
+        partial = False
+        for link in links:
+            try:
+                source, html = read_page(site_url(link), deadline, origin=urlsplit(url).netloc)
+                found, _ = contacts(html, source)
+                for item in found:
+                    if item['phone'] not in {p['phone'] for p in phones}:
+                        phones.append(item)
+            except (SiteUnavailable, httpx.HTTPError, OSError, ValueError):
+                partial = True
+        return {"website_url": url, "website_summary": summary, "website_status": "ok" if summary else "no_text",
+                "website_phones": phones[:5], "website_phone_status": "found" if phones else "incomplete" if partial else "not_found"}
     except SiteUnavailable as exc:
-        return {"website_status": str(exc)}
+        return {"website_status": str(exc), "website_phone_status": str(exc), "website_phones": []}
     except (UnicodeError, ValueError, LookupError):
-        return {"website_status": "unsupported"}
-    return {"website_status": "unavailable"}
+        return {"website_status": "unsupported", "website_phone_status": "unsupported", "website_phones": []}

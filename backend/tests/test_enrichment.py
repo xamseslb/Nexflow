@@ -68,7 +68,7 @@ def test_public_website_summary_and_robots(monkeypatch):
     monkeypatch.setattr(company_site, "fetch", fetch)
     assert company_site.website_data("www.example.no")["website_summary"] == message
     monkeypatch.setattr(company_site, "fetch", lambda url, deadline: (200, "text/plain", "User-agent: *\nDisallow: /"))
-    assert company_site.website_data("www.example.no") == {"website_status": "restricted"}
+    assert company_site.website_data("www.example.no")["website_status"] == "restricted"
 
 
 @pytest.mark.postgres

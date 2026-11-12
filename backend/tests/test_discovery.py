@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.api import eligibility
 from app.discovery import (DiscoveryChange, ReviewChange, exclusion, get_discovery, normal_phone,
                            records, review, run_discovery_once, save_discovery)
-from app.models import CallList, DiscoveryRecord, DiscoverySettings, Lead, Membership, Project
+from app.models import CallList, DiscoveryRecord, DiscoverySettings, Job, Lead, Membership, Project
 from test_postgres import as_user, tenant_data
 
 
@@ -37,6 +37,30 @@ def test_registry_exclusions_and_industry_validation():
     assert exclusion(company(), ['43'])
     with pytest.raises(ValidationError):
         DiscoveryChange(enabled=True, industries=['bogus'], call_list_id=uuid4())
+
+
+def test_existing_review_gets_phone_lookup_once_and_stays_blocked(configured, monkeypatch):
+    from app.worker import run_once
+    engine, worker, users, _, projects, _ = configured
+    with client_for([company('987654322','')]) as client:
+        run_discovery_once(worker,client)
+    with Session(engine) as db, db.begin():
+        lead=db.scalar(select(Lead).where(Lead.project_id==projects[0],Lead.review_required))
+        lead_id=lead.id
+        lead.enrichment={'lookup_status':'ok'}
+        db.execute(text("UPDATE hub.jobs SET available_at=now()+interval '1 day' WHERE project_id=:p"), {'p':projects[0]})
+    monkeypatch.setattr('app.worker.company_data',lambda *args: {'lookup_status':'ok','website_phone_status':'found',
+        'website_phones':[{'phone':'+4722001122','source_url':'https://example.no/kontakt'}]})
+    with httpx.Client() as client:
+        assert run_once(worker,client)
+        assert not run_once(worker,client)
+    with as_user(engine,users[0]) as db:
+        lead=db.get(Lead,lead_id)
+        assert lead.review_required and not lead.phone and lead.call_list_id is None
+        assert not eligibility(db,db.get(Project,projects[0]),lead)[0].allowed
+        result=records(projects[0],status='review',page=0,db=db)
+        assert result['items'][0]['website_phones'][0]['phone']=='+4722001122'
+        review(projects[0],result['items'][0]['id'],ReviewChange(decision='approve',phone='+4722001122',confirmed_business_number=True),db)
 
 
 @pytest.fixture

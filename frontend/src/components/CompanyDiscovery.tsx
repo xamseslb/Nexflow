@@ -4,10 +4,11 @@ import { request, type Project } from '@/lib/api'
 import { Button } from './ui/button'
 import { Dialog } from './ui/dialog'
 import './company-discovery.css'
+import { WebsitePhones, type WebsitePhone } from './WebsitePhones'
 
 type Settings = { enabled: boolean; industries: string[]; call_list_id: string | null; area: string; daily_limit: number;
   imported_today: number; last_run_at: string | null; next_run_at: string | null; last_error: string | null; last_summary: Record<string, number | boolean> }
-type Entry = { id: string; company: string; org_number: string; status: string; reason: string; lead_id: string | null; source_url: string; created_at: string }
+type Entry = { id: string; company: string; org_number: string; status: string; reason: string; lead_id: string | null; source_url: string; created_at: string; website_phones?: WebsitePhone[]; website_phone_status?: string; website_checked_at?: string }
 type Queue = { id: string; name: string; category: string }
 type Data = { settings: Settings; catalog: { code: string; name: string }[]; catalog_as_of: string }
 const statusLabels: Record<string, string> = { imported: 'I Cold-kø', review: 'Må gjennomgås', duplicate: 'Allerede kjent', excluded: 'Utelatt', rejected: 'Avvist' }
@@ -117,8 +118,8 @@ export function CompanyDiscovery({ project, demo, onCustomer, onQueues }: {
           {Object.keys(data.settings.last_summary).length>0 && <p className="discovery-last">{data.settings.last_summary.quota_reached ? 'Dagens kvote er brukt opp. Søket fortsetter neste dag.' : `Siste søk: ${data.settings.last_summary.imported || 0} til Cold · ${data.settings.last_summary.review || 0} til gjennomgang · ${data.settings.last_summary.duplicate || 0} allerede kjent · ${data.settings.last_summary.excluded || 0} utelatt`}</p>}
           <label className="discovery-field">Vis treff<select value={status} onChange={e=>{setStatus(e.target.value);setPage(0)}}><option value="all">Alle treff</option>{Object.entries(statusLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           {!entries.length ? <div className="discovery-empty"><Search size={28}/><h3>{demo ? 'Ingen reelle søk i demonstrasjonen' : 'Ingen treff i denne visningen ennå'}</h3><p>{data.settings.enabled ? 'Nye treff vises etter neste timekjøring. Bruk «Hent status på nytt» for å oppdatere.' : 'Velg bransjer og en Cold-kø, og aktiver automatisk søk.'}</p></div> : <ul className="discovery-records">{entries.map(row=><li key={row.id}>
-            <div><span className={`discovery-status ${row.status}`}>{statusLabels[row.status]}</span><h3>{row.lead_id ? <button onClick={()=>onCustomer(row.lead_id!)}>{row.company}<ArrowRight size={14}/></button> : row.company}</h3><p>Org.nr. {row.org_number} · {time(row.created_at)}</p><p>{row.reason}</p></div>
-            <div className="discovery-record-actions"><a href={row.source_url} target="_blank" rel="noopener noreferrer" aria-label={`Registerkilde for ${row.company}`}>Registerkilde<ExternalLink size={13}/></a>{row.status==='review' && <Button variant="outline" size="sm" onClick={()=>{setReview(row);setPhone('');setConfirmed(false);setError('')}}>Gjennomgå</Button>}</div>
+            <div><span className={`discovery-status ${row.status}`}>{statusLabels[row.status]}</span><h3>{row.lead_id ? <button onClick={()=>onCustomer(row.lead_id!)}>{row.company}<ArrowRight size={14}/></button> : row.company}</h3><p>Org.nr. {row.org_number} · {time(row.created_at)}</p><p>{row.reason}</p>{row.status==='review' && <p>{row.website_phones?.length ? `${row.website_phones.length} telefonforslag funnet på nettsiden` : row.website_phone_status==='missing_website' ? 'Ingen nettside registrert' : 'Telefon søkes på registrert nettside ved automatisk oppslag'}</p>}</div>
+            <div className="discovery-record-actions"><a href={row.source_url} target="_blank" rel="noopener noreferrer" aria-label={`Registerkilde for ${row.company}`}>Registerkilde<ExternalLink size={13}/></a>{row.status==='review' && <Button variant="outline" size="sm" onClick={()=>{setReview(row);setPhone(row.website_phone_status==='found' && row.website_phones?.length===1 ? row.website_phones[0].phone : '');setConfirmed(false);setError('')}}>Gjennomgå</Button>}</div>
           </li>)}</ul>}
           <div className="discovery-pagination"><Button variant="ghost" disabled={page===0} onClick={()=>setPage(n=>n-1)}>Forrige</Button><span>Side {page+1}</span><Button variant="ghost" disabled={!more} onClick={()=>setPage(n=>n+1)}>Neste</Button></div>
           <p className="discovery-explainer"><ShieldCheck size={16}/>Duplikater og registrerte reklamereservasjoner utelates. Treff uten telefon må gjennomgås før de kan ringes.</p>
@@ -128,6 +129,7 @@ export function CompanyDiscovery({ project, demo, onCustomer, onQueues }: {
     <Dialog open={Boolean(review)} onOpenChange={open=>{if(!open && !busy)setReview(null)}} title="Kontroller bedriftsnummer" description={review?.company || ''}>
       <form className="form-stack" onSubmit={e=>{e.preventDefault();void decide('approve')}}>
         <p>Oppgi bedriftens offentlige telefonnummer. Godkjenning legger kontakten i prosjektets valgte Cold-kø.</p>
+        <WebsitePhones phones={review?.website_phones} status={review?.website_phone_status} checked={review?.website_checked_at} onChoose={value=>{setPhone(value);setConfirmed(false)}}/>
         <label>Bedriftens telefonnummer<input type="tel" required maxLength={30} value={phone} placeholder="+47 22 00 00 00" onChange={e=>setPhone(e.target.value)}/></label>
         <label className="discovery-check"><input type="checkbox" required checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>Jeg har kontrollert at nummeret tilhører bedriften.</label>
         {error && <p role="alert" className="discovery-error">{error}</p>}
