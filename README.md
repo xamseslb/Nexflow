@@ -116,6 +116,14 @@ Docker og manuell utrulling. Begge bruker betalt, kontinuerlig drift; kontroller
 prisen i Render før opprettelse. Filen oppretter ingen database. Supabase-prosjektet
 `udkigapetwzmyaqztkzj` og Netlify-prosjektet `gorgeous-concha-82f7a1` beholdes.
 
+Piloten 12. november 2026 bruker i stedet manuelt opprettet **gratis API** på
+`https://nexflow-api-cms0.onrender.com`. Betalt aktivering er utsatt av eieren.
+Bakgrunnsarbeideren er derfor ikke startet på Render. Den begrensede
+databasebrukeren er klargjort, og arbeideren kan kjøres lokalt med
+`python -m app.worker --once` for én forfalt jobb. Automatisk daglig berikelse
+krever en kjørende arbeider; API-et alene utfører ikke køjobbene.
+Gratis-API-et kan gå i hvile og bruke minst 50 sekunder på første forespørsel.
+
 1. Kjør alle Alembic-migreringene separat med administrativ databaseforbindelse.
 2. Opprett de begrensede LOGIN-rollene beskrevet ovenfor. Sett `DATABASE_URL` bare
    på API-tjenesten og `WORKER_DATABASE_URL` bare på arbeideren. Bruk TLS og riktig
@@ -134,6 +142,14 @@ prisen i Render før opprettelse. Filen oppretter ingen database. Supabase-prosj
 Netlify kan enten bygge fra Git med `netlify.toml` eller motta en lokalt bygget
 `frontend/dist`. Ved manuell opplasting må miljøvariablene være satt **før bygging**.
 `_headers` og `_redirects` blir med i begge typer utrulling.
+
+Supabase Auth Site URL skal være `https://gorgeous-concha-82f7a1.netlify.app`.
+Legg `https://gorgeous-concha-82f7a1.netlify.app/?auth=password` i Redirect URLs.
+Administrator inviterer brukere gjennom Supabase Auth; mottakeren velger selv
+passord på invitasjonssiden. «Glemt passord» sender en ny lenke til samme side.
+Et Auth-brukerobjekt alene gir ikke CRM-tilgang: aktivt prosjektmedlemskap må
+opprettes administrativt. Konfigurer egen SMTP før invitasjoner til eksterne
+testere; standardutsendingen i Supabase er begrenset.
 
 Bedriftsarbeideren beriker eksisterende B2B-leads daglig. Den oppdager ikke nye
 privatpersoner, og den utfører ingen oppringinger.

@@ -14,10 +14,11 @@ import { Reports } from '@/components/Reports'
 import { FollowUps, LeadActivity, type FollowUpTask } from '@/components/FollowUps'
 import { MeetingActions, meetingOutcomeLabel } from '@/components/MeetingActions'
 import { Login } from '@/components/Login'
+import { PasswordSetup } from '@/components/PasswordSetup'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { money, cn } from '@/lib/utils'
-import { apiUrl, request, supabase, demoProjects, demoLeads, demoProducts, demoSales, initialMeetings, type Project, type Lead, type Sale, type Product, type Meeting } from '@/lib/api'
+import { apiUrl, request, supabase, passwordLink, demoProjects, demoLeads, demoProducts, demoSales, initialMeetings, type Project, type Lead, type Sale, type Product, type Meeting } from '@/lib/api'
 
 type View = 'overview' | 'leads' | 'meetings' | 'sales' | 'projects' | 'reports' | 'tasks' | 'queues' | 'customers'
 const labels: Record<string, string> = { new: 'Ny', callback: 'Ring tilbake', meeting: 'Møte booket', sold: 'Salg', declined: 'Ikke aktuell', blocked: 'Sperret', registered: 'Til godkjenning', approved: 'Godkjent', awaiting_confirmation: 'Venter på bekreftelse' }
@@ -34,6 +35,7 @@ function dateLabel(value: string) { return new Intl.DateTimeFormat('nb-NO', { da
 export default function App() {
   const [demo, setDemo] = useState(import.meta.env.VITE_DEMO_MODE === 'true')
   const [userId, setUserId] = useState('')
+  const [settingPassword, setSettingPassword] = useState(passwordLink)
   const authenticated = Boolean(userId)
   const tourOwner = demo ? 'demo' : userId
   const [tourRun, setTourRun] = useState({ owner: '', count: 0, full: true })
@@ -98,7 +100,10 @@ export default function App() {
       setUserId(data.session?.user.id || '')
       if (error) setError('Kunne ikke hente innloggingen. Prøv å logge inn på nytt.')
     }).catch(() => active && setError('Kunne ikke hente innloggingen. Prøv igjen.')).finally(() => active && setRestoringSession(false))
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUserId(session?.user.id || ''))
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserId(session?.user.id || '')
+      if (event === 'PASSWORD_RECOVERY') { setSettingPassword(true); setDemo(false) }
+    })
     return () => { active = false; data.subscription.unsubscribe() }
   }, [])
   useEffect(() => {
@@ -307,6 +312,12 @@ export default function App() {
     })
   }
 
+  if (settingPassword) return <PasswordSetup ready={authenticated} restoring={restoringSession} onDone={() => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('auth'); url.hash = ''
+    window.history.replaceState(null, '', url.pathname + url.search)
+    setSettingPassword(false); setDemo(false); setError('')
+  }} />
   if (!demo && (!authenticated || restoringSession)) return <Login configured={Boolean(supabase)} restoring={restoringSession} busy={busy} error={error} onLogin={login} onDemo={() => { setDemo(true); setError(''); setView('overview') }} />
 
   return <div className="app-shell">
