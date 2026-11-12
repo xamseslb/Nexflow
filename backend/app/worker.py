@@ -8,6 +8,7 @@ from uuid import UUID
 import httpx
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from .company_registry import company_data, match_company
 from .config import settings
@@ -69,11 +70,43 @@ def run_once(engine, client: httpx.Client) -> bool:
         return True
 
 
+def run_batch(engine, client, *, max_jobs=20, max_seconds=120):
+    """Drain due jobs without waiting; finish the current transaction before stopping.
+
+    The time budget is checked between jobs. The scheduler must also impose a
+    hard process timeout for a source or database that stops responding.
+    """
+    if max_jobs <= 0 or max_seconds <= 0:
+        raise ValueError("Batch limits must be positive")
+    started = time.monotonic()
+    processed = 0
+    while processed < max_jobs:
+        if time.monotonic() - started >= max_seconds:
+            return {"processed": processed, "stop_reason": "time_limit"}
+        if not run_once(engine, client):
+            return {"processed": processed, "stop_reason": "queue_empty"}
+        processed += 1
+    return {"processed": processed, "stop_reason": "job_limit"}
+
+
+def positive_int(value):
+    number = int(value)
+    if number <= 0:
+        raise argparse.ArgumentTypeError("Must be greater than zero")
+    return number
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--once", action="store_true")
-    parser.add_argument("--lookup", metavar="ORGNR", help="Read a company's current public facts without writing to the CRM")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--once", action="store_true")
+    mode.add_argument("--batch", action="store_true", help="Process due jobs and exit, without idle polling")
+    mode.add_argument("--lookup", metavar="ORGNR", help="Read a company's current public facts without writing to the CRM")
+    parser.add_argument("--max-jobs", type=positive_int, default=20)
+    parser.add_argument("--max-seconds", type=positive_int, default=120)
     args = parser.parse_args()
+    if not args.batch and (args.max_jobs != 20 or args.max_seconds != 120):
+        parser.error("Batch limits require --batch")
     with httpx.Client(timeout=10, follow_redirects=False, headers={"User-Agent": "NexflowBot"}) as client:
         if args.lookup:
             print(json.dumps(company_data(args.lookup, client), ensure_ascii=False, indent=2))
@@ -81,12 +114,22 @@ def main():
         if not settings().worker_database_url:
             raise SystemExit("WORKER_DATABASE_URL is required")
         check_production(settings(), worker=True)
-        engine = create_engine(settings().worker_database_url, pool_pre_ping=True, pool_size=2)
-        while True:
-            worked = run_once(engine, client)
-            if args.once:
+        engine = create_engine(settings().worker_database_url, pool_pre_ping=True, pool_size=2,
+                               connect_args={"connect_timeout": 10})
+        try:
+            if args.batch:
+                print(json.dumps(run_batch(engine, client, max_jobs=args.max_jobs, max_seconds=args.max_seconds)))
                 return
-            time.sleep(1 if worked else 3)
+            while True:
+                worked = run_once(engine, client)
+                if args.once:
+                    return
+                time.sleep(1 if worked else 3)
+        except SQLAlchemyError:
+            # Public CI logs must never contain driver messages, SQL or lead data.
+            raise SystemExit("Worker database operation failed; check connection and role grants") from None
+        finally:
+            engine.dispose()
 
 
 if __name__ == "__main__":

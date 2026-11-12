@@ -120,8 +120,9 @@ Piloten 12. november 2026 bruker i stedet manuelt opprettet **gratis API** på
 `https://nexflow-api-cms0.onrender.com`. Betalt aktivering er utsatt av eieren.
 Bakgrunnsarbeideren er derfor ikke startet på Render. Den begrensede
 databasebrukeren er klargjort, og arbeideren kan kjøres lokalt med
-`python -m app.worker --once` for én forfalt jobb. Automatisk daglig berikelse
-krever en kjørende arbeider; API-et alene utfører ikke køjobbene.
+`python -m app.worker --once` for én forfalt jobb. Den alternative GitHub Actions-
+timejobben nedenfor kan utføre daglig berikelse uten en betalt Render-arbeider.
+API-et alene utfører ikke køjobbene.
 Gratis-API-et kan gå i hvile og bruke minst 50 sekunder på første forespørsel.
 
 Pilotkontroller utført: Render-helse 200, uinnlogget prosjektforespørsel 401,
@@ -133,7 +134,7 @@ brukerøkter, ulike partnere, filopplasting og samtidige skriv.
 
 «Pilot – bedrifter» har Hot-, Cold- og Winback-køer og ett Bouvet Norge AS-testkort,
 sperret for oppringing. Ett reelt oppslag er kjørt og lagret med kilde/tidspunkt.
-Neste jobb ligger i kø; den kjører først når arbeideren startes igjen.
+Neste jobb ligger i kø; den behandles når en arbeider kjører etter forfall.
 
 1. Kjør alle Alembic-migreringene separat med administrativ databaseforbindelse.
 2. Opprett de begrensede LOGIN-rollene beskrevet ovenfor. Sett `DATABASE_URL` bare
@@ -164,6 +165,45 @@ testere; standardutsendingen i Supabase er begrenset.
 
 Bedriftsarbeideren beriker eksisterende B2B-leads daglig. Den oppdager ikke nye
 privatpersoner, og den utfører ingen oppringinger.
+
+### Gratis timekjøring på GitHub Actions
+
+`.github/workflows/enrichment.yml` kjører ved minutt 17 hver time (UTC), samt
+manuelt fra Actions → Hourly company enrichment → Run workflow på `main`.
+Den er sperret til repository-variabelen `ENRICHMENT_ENABLED` er `true`.
+Aktivering krever repository-secret `WORKER_DATABASE_URL` med den eksisterende
+begrensede `hub_jobs_runtime`-forbindelsen. Aldri bruk databaseeierens passord
+eller Supabase service-role-nøkkel. Ikke legg forbindelsen i kode eller variabler.
+Personer med skrivetilgang til repoet kan lage workflows som bruker secrets;
+begrens derfor hvem som får slik tilgang.
+
+Jobben kjører bare i det offentlige `xamseslb/Nexflow`, på `main`, på en standard
+`ubuntu-latest`-runner. GitHub tilbyr gratis standard-runnere i offentlige repoer:
+https://docs.github.com/en/billing/concepts/product-billing/github-actions
+Blir repoet privat, hoppes jobben over før en runner startes. Workflowen bruker
+ingen Actions-cache, opplastede artifacts, betalte oppslags-API-er eller Render-worker.
+Dette gjelder denne workflowen, ikke kostnader fra andre tjenester/workflows.
+
+Hver batch tar høyst 20 forfalte jobber og starter ikke en ny jobb etter 120
+sekunder. Pågående transaksjon kan fullføres etter dette; prosessen stoppes hardt
+etter 180 sekunder (10 sekunders avslutningsfrist), hele Actions-jobben etter 5
+minutter. En avbrutt transaksjon rulles tilbake og jobben kan prøves igjen.
+`FOR UPDATE SKIP LOCKED` beskytter køen, og workflow-concurrency hindrer overlapp.
+Lokal tilsvarende kommando fra `backend`:
+`python -m app.worker --batch --max-jobs 20 --max-seconds 120`.
+
+Hver time hentes **forfalte** oppslag. Et vellykket kundekort oppdateres normalt
+igjen neste dag; midlertidige kildefeil prøves igjen ved en senere timekjøring.
+Offentlige logger viser bare antall behandlede jobber og stoppårsak, ikke
+kundedata. `processed` betyr behandlede køjobber, også utsatte/ugyldige jobber,
+ikke nødvendigvis vellykkede berikelser. Kontroller kilde/status/tid på kundekortet.
+
+GitHub kan forsinke planlagte kjøringer og deaktiverer tidsplaner i offentlige
+repoer etter 60 dager uten repoaktivitet. Se
+https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+For pause: sett `ENRICHMENT_ENABLED=false` og avbryt eventuell pågående kjøring.
+For oppstart: lagre secret, aktiver variabelen og kontroller en manuell kjøring
+før timejobben regnes som operativ. Render og Netlify trenger ingen ny utrulling.
 
 Fullfør kravlisten, kjør RLS- og samtidighetstester mot Supabase, gjennomgå juridiske regler,
 sett opp registerleverandør, meldingsleverandør, kvitteringslagring, sikkerhetskopiering,
