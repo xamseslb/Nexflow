@@ -1,0 +1,37 @@
+# Review the displayed Render price before creating these paid, always-on services.
+# Database migrations run separately; never give the services an admin credential.
+services:
+  - type: web
+    name: nexflow-api
+    runtime: docker
+    plan: 0.5c-512mb
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: SUPABASE_URL
+        value: https://udkigapetwzmyaqztkzj.supabase.co
+      - key: CORS_ORIGINS
+        value: '["https://gorgeous-concha-82f7a1.netlify.app"]'
+      - key: DATABASE_URL
+        sync: false
+  - type: worker
+    name: nexflow-enrichment
+    runtime: docker
+    plan: 0.5c-512mb
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python -m app.worker
+    autoDeployTrigger: "off"
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: WORKER_DATABASE_URL
+        sync: false

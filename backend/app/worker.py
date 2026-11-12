@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from .company_registry import company_data, match_company
 from .config import settings
+from .deployment import check_production
 from .models import Job, Lead
 
 
@@ -79,6 +80,7 @@ def main():
             return
         if not settings().worker_database_url:
             raise SystemExit("WORKER_DATABASE_URL is required")
+        check_production(settings(), worker=True)
         engine = create_engine(settings().worker_database_url, pool_pre_ping=True, pool_size=2)
         while True:
             worked = run_once(engine, client)

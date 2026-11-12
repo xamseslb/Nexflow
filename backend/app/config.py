@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    app_env: str = "development"
     supabase_url: str = ""
     database_url: str = ""
     migration_database_url: str = ""

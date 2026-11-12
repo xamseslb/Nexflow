@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,8 +10,16 @@ from .meeting_workflow import router as meeting_workflow_router
 from .management import router as management_router
 from .customer import router as customer_router
 from .config import settings
+from .deployment import check_production
 
-app = FastAPI(title="Nexflow CRM", version="0.1.0", description="Partnerisolert CRM med Supabase Auth")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    check_production(settings())
+    yield
+
+
+app = FastAPI(title="Nexflow CRM", version="0.1.0", description="Partnerisolert CRM med Supabase Auth", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings().cors_origins,
                    allow_credentials=False, allow_methods=["GET", "POST", "PATCH", "DELETE"],
                    allow_headers=["Authorization", "Content-Type"])

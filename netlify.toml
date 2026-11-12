@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Set VITE_API_URL, VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+# in this existing Netlify project's build environment after the API is verified.
+# Set VITE_DEMO_MODE=false for the authenticated pilot build.

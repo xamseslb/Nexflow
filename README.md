@@ -109,6 +109,35 @@ separat, aldri automatisk av API-prosessen. Legg TLS/reverse proxy foran ved utr
 
 ## Før produksjon
 
+### Utrulling på Render og eksisterende Netlify-prosjekt
+
+`render.yaml` klargjør `nexflow-api` og `nexflow-enrichment` i Frankfurt med
+Docker og manuell utrulling. Begge bruker betalt, kontinuerlig drift; kontroller
+prisen i Render før opprettelse. Filen oppretter ingen database. Supabase-prosjektet
+`udkigapetwzmyaqztkzj` og Netlify-prosjektet `gorgeous-concha-82f7a1` beholdes.
+
+1. Kjør alle Alembic-migreringene separat med administrativ databaseforbindelse.
+2. Opprett de begrensede LOGIN-rollene beskrevet ovenfor. Sett `DATABASE_URL` bare
+   på API-tjenesten og `WORKER_DATABASE_URL` bare på arbeideren. Bruk TLS og riktig
+   Supabase session pooler dersom verten trenger IPv4. Passord med spesialtegn må URL-kodes.
+3. Sett aldri `MIGRATION_DATABASE_URL` på de kjørende Render-tjenestene.
+   `APP_ENV=production` stopper oppstart ved manglende TLS, feil innlogging,
+   administrativ databaserolle, manglende skjema eller deaktiverte RLS-regler.
+4. Verifiser API-helsen, en avvist uautentisert forespørsel og en innlogget økt
+   med faktisk prosjektmedlemskap før frontend publiseres.
+5. Bygg Netlify med `VITE_DEMO_MODE=false`, Supabase-prosjektets URL og publishable key,
+   samt `VITE_API_URL=https://<bekreftet-api-vertsnavn>/api/v1`. Oppdater Supabase Auth
+   Site URL til kundelenken. Ikke bruk service-role-nøkkel i frontend.
+6. Verifiser to brukere med ulike prosjekttilganger og et B2B-oppslag via arbeideren.
+   Kontroller kilde og tidspunkt på kundekortet, og at endringer overlever ny innlogging.
+
+Netlify kan enten bygge fra Git med `netlify.toml` eller motta en lokalt bygget
+`frontend/dist`. Ved manuell opplasting må miljøvariablene være satt **før bygging**.
+`_headers` og `_redirects` blir med i begge typer utrulling.
+
+Bedriftsarbeideren beriker eksisterende B2B-leads daglig. Den oppdager ikke nye
+privatpersoner, og den utfører ingen oppringinger.
+
 Fullfør kravlisten, kjør RLS- og samtidighetstester mot Supabase, gjennomgå juridiske regler,
 sett opp registerleverandør, meldingsleverandør, kvitteringslagring, sikkerhetskopiering,
 rate limiting, observabilitet og gjenopprettingstest. Ikke aktiver B2C eller utbetalinger
