@@ -8,7 +8,8 @@ if not url:
     raise RuntimeError("MIGRATION_DATABASE_URL is required; do not migrate with the API account")
 
 if context.is_offline_mode():
-    context.configure(url=url, target_metadata=Base.metadata, literal_binds=True, include_schemas=True)
+    context.configure(url=url, target_metadata=Base.metadata, literal_binds=True, include_schemas=True,
+                      dialect_opts={"paramstyle": "named"})
     with context.begin_transaction():
         context.run_migrations()
 else:
