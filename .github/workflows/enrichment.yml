@@ -41,4 +41,4 @@ jobs:
           PYTHONUNBUFFERED: '1'
         # A batch checks time between jobs; timeout is the hard upper bound.
         # Never use --lookup here: it prints company facts into public logs.
-        run: timeout --signal=TERM --kill-after=10s 180s python -m app.worker --batch --max-jobs 20 --max-seconds 120
+        run: timeout --signal=TERM --kill-after=10s 180s python -m app.worker --batch --discover --max-jobs 20 --max-seconds 120

@@ -10,6 +10,7 @@ test('complete walkthrough follows the actual workspace menu from overview to re
   const pages = [
     ['Oversikt', 'Les leadstatusen'], ['Ringeliste', 'Bytt mellom tavle og liste'],
     ['Ringekøer', 'Velg type ringekø'], ['Kunder', 'Se et ekte bedriftsoppslag'],
+    ['Finn bedrifter', 'Velg hvem systemet skal finne'],
     ['Møter', 'Book et møte'], ['Salg og opptjening', 'Registrer et salg'],
     ['Prosjekter', 'Les prosjektkortet'], ['Oppfølging', 'Sett fristen'],
     ['Rapporter', 'Se utviklingen over tid'],
@@ -24,7 +25,7 @@ test('complete walkthrough follows the actual workspace menu from overview to re
     await expect(tour).toBeVisible()
   }
   for (const [i, [name, required]] of pages.entries()) {
-    await expect(tour.locator('header')).toContainText('Side ' + (i + 1) + ' av 9 · ' + name)
+    await expect(tour.locator('header')).toContainText('Side ' + (i + 1) + ' av ' + pages.length + ' · ' + name)
     const titles = []
     while (true) {
       titles.push(await tour.locator('h2').innerText())

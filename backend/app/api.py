@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from .company_registry import public_facts
 from .db import session
@@ -67,6 +68,8 @@ def eligibility(db: Session, project: Project, lead: Lead):
                         registry_reserved=check.reserved if check else None, consent_valid=consent is not None)
     if lead.status in ("sold", "declined"):
         decision = Eligibility(False, "Leadet er avsluttet")
+    elif lead.review_required or not lead.phone.strip():
+        decision = Eligibility(False, "Bedriftsnummeret må kontrolleres før kontakten kan ringes")
     elif lead.call_list_id and lead.status == "callback" and lead.callback_at and lead.callback_at > current:
         decision = Eligibility(False, "Tilbakekallingen er planlagt til et senere tidspunkt")
     return decision, {"allowed": decision.allowed, "reason": decision.reason, "evaluated_at": current.isoformat(),
@@ -77,7 +80,7 @@ def eligibility(db: Session, project: Project, lead: Lead):
 def lead_payload(lead: Lead):
     payload = {key: getattr(lead, key) for key in ("id", "project_id", "call_list_id", "company", "contact", "phone", "kind", "status", "priority", "industry", "city", "summary", "blocked", "reserved_by", "reserved_until", "callback_at")}
     info = lead.enrichment if lead.kind == "b2b" and isinstance(lead.enrichment, dict) else {}
-    return {**payload, "enrichment": public_facts(info)}
+    return {**payload, "review_required": lead.review_required, "enrichment": public_facts(info)}
 
 
 @router.get("/me")
@@ -115,8 +118,14 @@ def create_lead(project_id: UUID, body: LeadCreate, db: Session = Db):
     if not project.active or project.kind not in (body.kind, "both"):
         raise HTTPException(422, "Kontakttypen er ikke tillatt i dette aktive prosjektet")
     lead = Lead(project_id=project.id, partner_id=project.partner_id, **body.model_dump())
-    db.add(lead)
-    db.flush()
+    try:
+        with db.begin_nested():
+            db.add(lead)
+            db.flush()
+    except IntegrityError as exc:
+        if getattr(getattr(exc.orig, 'diag', None), 'constraint_name', None) == 'lead_project_org':
+            raise HTTPException(409, "Bedriften finnes allerede i prosjektet") from None
+        raise
     if lead.kind == "b2b":
         db.execute(Job.__table__.insert().inline().values(project_id=project.id, partner_id=project.partner_id,
                                                        kind="brreg_enrichment", payload={"lead_id": str(lead.id)}))

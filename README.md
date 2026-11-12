@@ -214,6 +214,36 @@ For pause: sett `ENRICHMENT_ENABLED=false` og avbryt eventuell pågående kjøri
 For oppstart: lagre secret, aktiver variabelen og kontroller en manuell kjøring
 før timejobben regnes som operativ. Render og Netlify trenger ingen ny utrulling.
 
+### Automatisk søk etter nye bedrifter
+
+Funksjonen «Finn bedrifter» lar prosjektets leder/administrator velge bransjer,
+Cold-kø og pause/aktivere søket. Pilotområdet er Oslo (kommunenummer 0301).
+Tomt bransjevalg betyr alle bransjer; katalogen bruker SSBs tosifrede næringsgrupper.
+Oppslag hentes fra Brønnøysundregistrenes gratis Enhetsregister-API.
+
+Arbeiderens `--batch --discover` undersøker én side med høyst 50 treff før den
+beriker forfalte kundekort. Den husker side og posisjon mellom kjøringer.
+Høyst 20 nye bedrifter opprettes per prosjekt og norsk kalenderdag, inkludert
+treff til gjennomgang. Databaselås og trigger håndhever kvoten også ved
+samtidige kjøringer; filterendringer nullstiller ikke kvoten. Organisasjonsnummer
+er unikt per B2B-prosjekt. Eksisterende, avviste og sperrede kontakter gjenopprettes ikke.
+Konkurs, avvikling, sletting og registrerte reklamereservasjoner utelates.
+
+Et gyldig norsk telefonnummer i registeret plasserer kontakten i valgt Cold-kø.
+Treff uten nummer får «Må gjennomgås» og sperres fra ringestart og automatisk
+køvalg. Leder må kontrollere bedriftsnummeret og godkjenne, eller avvise treffet.
+Importhistorikken viser kilde, tidspunkt og begrunnelse og lenker til kundekortet.
+Selve oppringingen bruker fortsatt backendens vanlige tillatelseskontroll.
+
+Utrullingsrekkefølge: kjør migrasjon **0012** med databaseeier, publiser ny API
+og frontend, og oppdater deretter timejobbens kode. Den nye migrasjonen gir den
+eksisterende begrensede arbeiderrollen målrettet innsettingsrett, med RLS og
+kvotetrigger. Den oppretter ingen nye innloggingsroller eller hemmeligheter.
+Før migrasjon må eventuelle eksisterende duplikater undersøkes; migrasjonen
+sletter eller slår ikke sammen kundedata automatisk. Bruk prosjektets side for
+aktivering. Nytt bedriftssøk krever disse utrullingene, i motsetning til den
+tidligere timejobben for bare berikelse. Det opprettes ingen betalt Render-worker.
+
 Fullfør kravlisten, kjør RLS- og samtidighetstester mot Supabase, gjennomgå juridiske regler,
 sett opp registerleverandør, meldingsleverandør, kvitteringslagring, sikkerhetskopiering,
 rate limiting, observabilitet og gjenopprettingstest. Ikke aktiver B2C eller utbetalinger

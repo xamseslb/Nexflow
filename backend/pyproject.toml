@@ -19,6 +19,9 @@ test = ["pytest>=8.3,<10"]
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+app = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["postgres: requires a disposable Supabase/PostgreSQL test database"]

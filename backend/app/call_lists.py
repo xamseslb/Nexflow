@@ -153,7 +153,7 @@ def next_contact(project_id: UUID, list_id: UUID, db: Session = Db):
     held = and_(Lead.reserved_by == uid, Lead.reserved_until > current)
     query = select(Lead).where(
         Lead.project_id == project_id, Lead.call_list_id == list_id, Lead.queue_completed_at.is_(None),
-        Lead.blocked.is_(False), Lead.status.in_(("new", "callback")),
+        Lead.blocked.is_(False), Lead.review_required.is_(False), Lead.phone != "", Lead.status.in_(("new", "callback")),
         or_(Lead.status != "callback", Lead.callback_at.is_(None), Lead.callback_at <= current),
         or_(Lead.reserved_by.is_(None), Lead.reserved_until.is_(None), Lead.reserved_until <= current, held),
         or_(Lead.kind == "b2b", and_(Lead.kind == "b2c", or_(consent, clear_check))),

@@ -1,0 +1,355 @@
+{
+  "as_of": "2026-11-12",
+  "license": "CC BY 4.0, Statistisk sentralbyrå",
+  "items": [
+    {
+      "code": "01",
+      "name": "Jordbruk og tjenester tilknyttet jordbruk, jakt og viltstell"
+    },
+    {
+      "code": "02",
+      "name": "Skogbruk og tjenester tilknyttet skogbruk"
+    },
+    {
+      "code": "03",
+      "name": "Fiske, fangst og akvakultur"
+    },
+    {
+      "code": "05",
+      "name": "Bryting av steinkull og brunkull"
+    },
+    {
+      "code": "06",
+      "name": "Utvinning av råolje og naturgass"
+    },
+    {
+      "code": "07",
+      "name": "Bryting av metallholdig malm"
+    },
+    {
+      "code": "08",
+      "name": "Bryting og bergverksdrift ellers"
+    },
+    {
+      "code": "09",
+      "name": "Tjenester tilknyttet bergverksdrift og utvinning"
+    },
+    {
+      "code": "10",
+      "name": "Produksjon av nærings- og nytelsesmidler"
+    },
+    {
+      "code": "11",
+      "name": "Produksjon av drikkevarer"
+    },
+    {
+      "code": "12",
+      "name": "Produksjon av tobakksvarer"
+    },
+    {
+      "code": "13",
+      "name": "Produksjon av tekstiler"
+    },
+    {
+      "code": "14",
+      "name": "Produksjon av klær"
+    },
+    {
+      "code": "15",
+      "name": "Produksjon av lær og andre relaterte produkter"
+    },
+    {
+      "code": "16",
+      "name": "Produksjon av trelast og varer av tre, kork, strå og flettematerialer, unntatt møbler"
+    },
+    {
+      "code": "17",
+      "name": "Produksjon av papir og papirvarer"
+    },
+    {
+      "code": "18",
+      "name": "Trykking og reproduksjon av innspilte opptak"
+    },
+    {
+      "code": "19",
+      "name": "Produksjon av kullprodukter og raffinerte petroleumsprodukter"
+    },
+    {
+      "code": "20",
+      "name": "Produksjon av kjemikalier og kjemiske produkter"
+    },
+    {
+      "code": "21",
+      "name": "Produksjon av farmasøytiske råvarer og preparater"
+    },
+    {
+      "code": "22",
+      "name": "Produksjon av gummi- og plastprodukter"
+    },
+    {
+      "code": "23",
+      "name": "Produksjon av andre ikke-metalliske mineralprodukter"
+    },
+    {
+      "code": "24",
+      "name": "Produksjon av metaller"
+    },
+    {
+      "code": "25",
+      "name": "Produksjon av metallvarer, unntatt maskiner og utstyr"
+    },
+    {
+      "code": "26",
+      "name": "Produksjon av datamaskiner og elektroniske og optiske produkter"
+    },
+    {
+      "code": "27",
+      "name": "Produksjon av elektrisk utstyr"
+    },
+    {
+      "code": "28",
+      "name": "Produksjon av maskiner og utstyr ikke nevnt annet sted"
+    },
+    {
+      "code": "29",
+      "name": "Produksjon av motorvogner og tilhengere"
+    },
+    {
+      "code": "30",
+      "name": "Produksjon av andre transportmidler"
+    },
+    {
+      "code": "31",
+      "name": "Produksjon av møbler"
+    },
+    {
+      "code": "32",
+      "name": "Annen industriproduksjon"
+    },
+    {
+      "code": "33",
+      "name": "Reparasjon, vedlikehold og installasjon av maskiner og utstyr"
+    },
+    {
+      "code": "35",
+      "name": "Forsyning av elektrisitet, gass, damp og kjøleluft"
+    },
+    {
+      "code": "36",
+      "name": "Uttak fra kilde, rensing og distribusjon av vann"
+    },
+    {
+      "code": "37",
+      "name": "Oppsamling og behandling av avløpsvann"
+    },
+    {
+      "code": "38",
+      "name": "Innsamling, gjenvinning og behandling av avfall"
+    },
+    {
+      "code": "39",
+      "name": "Miljøutbedring, opprydding og lignende aktivitet"
+    },
+    {
+      "code": "41",
+      "name": "Oppføring av bygninger"
+    },
+    {
+      "code": "42",
+      "name": "Anleggsvirksomhet"
+    },
+    {
+      "code": "43",
+      "name": "Spesialisert bygge- og anleggsvirksomhet"
+    },
+    {
+      "code": "46",
+      "name": "Engroshandel"
+    },
+    {
+      "code": "47",
+      "name": "Detaljhandel"
+    },
+    {
+      "code": "49",
+      "name": "Landtransport og rørtransport"
+    },
+    {
+      "code": "50",
+      "name": "Sjøfart"
+    },
+    {
+      "code": "51",
+      "name": "Lufttransport"
+    },
+    {
+      "code": "52",
+      "name": "Lagring og andre tjenester tilknyttet transport"
+    },
+    {
+      "code": "53",
+      "name": "Post- og budtjenester"
+    },
+    {
+      "code": "55",
+      "name": "Overnattingsvirksomhet"
+    },
+    {
+      "code": "56",
+      "name": "Serveringsvirksomhet"
+    },
+    {
+      "code": "58",
+      "name": "Utgivelsesvirksomhet"
+    },
+    {
+      "code": "59",
+      "name": "Film-, video- og fjernsynsprogramproduksjon, utgivelse av musikk- og lydopptak"
+    },
+    {
+      "code": "60",
+      "name": "Radio- og fjernsynsprogramvirksomhet, kringkasting, nyhetsbyråvirksomhet og distribuering av annet innhold"
+    },
+    {
+      "code": "61",
+      "name": "Telekommunikasjon"
+    },
+    {
+      "code": "62",
+      "name": "Dataprogrammering, konsulentvirksomhet og andre tjenester tilknyttet informasjonsteknologi"
+    },
+    {
+      "code": "63",
+      "name": "Datainfrastruktur, -behandling, -lagring og andre informasjonstjenester"
+    },
+    {
+      "code": "64",
+      "name": "Finansieringsvirksomhet og kollektive investeringsfond"
+    },
+    {
+      "code": "65",
+      "name": "Forsikringsvirksomhet, unntatt trygdeordninger underlagt offentlig forvaltning"
+    },
+    {
+      "code": "66",
+      "name": "Tjenester tilknyttet finansiell virksomhet"
+    },
+    {
+      "code": "68",
+      "name": "Eiendomsvirksomhet"
+    },
+    {
+      "code": "69",
+      "name": "Juridisk og regnskapsmessig tjenesteyting"
+    },
+    {
+      "code": "70",
+      "name": "Hovedkontortjenester og administrativ rådgivning"
+    },
+    {
+      "code": "71",
+      "name": "Arkitektvirksomhet og teknisk konsulentvirksomhet, og teknisk prøving og analyse"
+    },
+    {
+      "code": "72",
+      "name": "Forskning og eksperimentell utvikling"
+    },
+    {
+      "code": "73",
+      "name": "Annonse- og reklamevirksomhet, markedsundersøkelser og PR og kommunikasjonstjenester"
+    },
+    {
+      "code": "74",
+      "name": "Annen faglig, vitenskapelig og teknisk virksomhet"
+    },
+    {
+      "code": "75",
+      "name": "Veterinærtjenester"
+    },
+    {
+      "code": "77",
+      "name": "Utleie- og leasingvirksomhet"
+    },
+    {
+      "code": "78",
+      "name": "Arbeidskrafttjenester"
+    },
+    {
+      "code": "79",
+      "name": "Reisebyrå- og reisearrangørvirksomhet og tilknyttede tjenester"
+    },
+    {
+      "code": "80",
+      "name": "Etterforsknings- og vakttjenester"
+    },
+    {
+      "code": "81",
+      "name": "Tjenester tilknyttet eiendomsdrift og beplanting av hager og parkanlegg"
+    },
+    {
+      "code": "82",
+      "name": "Annen forretningsmessig tjenesteyting"
+    },
+    {
+      "code": "84",
+      "name": "Offentlig administrasjon og forsvar, og trygdeordninger underlagt offentlig forvaltning"
+    },
+    {
+      "code": "85",
+      "name": "Undervisning"
+    },
+    {
+      "code": "86",
+      "name": "Helsetjenester"
+    },
+    {
+      "code": "87",
+      "name": "Helse- og omsorgstjenester i institusjoner og andre botilbud"
+    },
+    {
+      "code": "88",
+      "name": "Omsorgs- og sosialtjenester uten botilbud"
+    },
+    {
+      "code": "90",
+      "name": "Kunstnerisk virksomhet og underholdningsvirksomhet"
+    },
+    {
+      "code": "91",
+      "name": "Drift av biblioteker, arkiver, museer og annen kulturvirksomhet"
+    },
+    {
+      "code": "92",
+      "name": "Lotteri- og gamblingvirksomhet"
+    },
+    {
+      "code": "93",
+      "name": "Sports-, fornøyelses- og fritidsaktiviteter"
+    },
+    {
+      "code": "94",
+      "name": "Aktiviteter i medlemsorganisasjoner"
+    },
+    {
+      "code": "95",
+      "name": "Reparasjon og vedlikehold av datamaskiner, husholdningsvarer, varer til personlig bruk og motorvogner og motorsykler"
+    },
+    {
+      "code": "96",
+      "name": "Personlig tjenesteyting"
+    },
+    {
+      "code": "97",
+      "name": "Lønnet arbeid i private husholdninger"
+    },
+    {
+      "code": "98",
+      "name": "Annen vareproduksjon og tjenesteyting i private husholdninger til eget bruk"
+    },
+    {
+      "code": "99",
+      "name": "Aktiviteter i internasjonale organisasjoner og organer"
+    }
+  ],
+  "source": "https://data.ssb.no/api/klass/v1/classifications/6/codesAt.json?date=2026-11-12&language=nb"
+}

@@ -9,6 +9,7 @@ from .call_lists import router as call_lists_router
 from .meeting_workflow import router as meeting_workflow_router
 from .management import router as management_router
 from .customer import router as customer_router
+from .discovery import router as discovery_router
 from .config import settings
 from .deployment import check_production
 
@@ -29,6 +30,7 @@ app.include_router(management_router)
 app.include_router(customer_router)
 app.include_router(meeting_workflow_router)
 app.include_router(call_lists_router)
+app.include_router(discovery_router)
 
 
 @app.middleware("http")

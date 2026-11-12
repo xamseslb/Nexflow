@@ -70,7 +70,7 @@ def run_once(engine, client: httpx.Client) -> bool:
         return True
 
 
-def run_batch(engine, client, *, max_jobs=20, max_seconds=120):
+def run_batch(engine, client, *, max_jobs=20, max_seconds=120, discover=False):
     """Drain due jobs without waiting; finish the current transaction before stopping.
 
     The time budget is checked between jobs. The scheduler must also impose a
@@ -79,6 +79,9 @@ def run_batch(engine, client, *, max_jobs=20, max_seconds=120):
     if max_jobs <= 0 or max_seconds <= 0:
         raise ValueError("Batch limits must be positive")
     started = time.monotonic()
+    if discover:
+        from .discovery import run_discovery_once
+        run_discovery_once(engine, client)
     processed = 0
     while processed < max_jobs:
         if time.monotonic() - started >= max_seconds:
@@ -104,9 +107,12 @@ def main():
     mode.add_argument("--lookup", metavar="ORGNR", help="Read a company's current public facts without writing to the CRM")
     parser.add_argument("--max-jobs", type=positive_int, default=20)
     parser.add_argument("--max-seconds", type=positive_int, default=120)
+    parser.add_argument("--discover", action="store_true", help="Search one configured project's next page before enrichment")
     args = parser.parse_args()
     if not args.batch and (args.max_jobs != 20 or args.max_seconds != 120):
         parser.error("Batch limits require --batch")
+    if args.discover and not args.batch:
+        parser.error("--discover requires --batch")
     with httpx.Client(timeout=10, follow_redirects=False, headers={"User-Agent": "NexflowBot"}) as client:
         if args.lookup:
             print(json.dumps(company_data(args.lookup, client), ensure_ascii=False, indent=2))
@@ -118,7 +124,7 @@ def main():
                                connect_args={"connect_timeout": 10})
         try:
             if args.batch:
-                print(json.dumps(run_batch(engine, client, max_jobs=args.max_jobs, max_seconds=args.max_seconds)))
+                print(json.dumps(run_batch(engine, client, max_jobs=args.max_jobs, max_seconds=args.max_seconds, discover=args.discover)))
                 return
             while True:
                 worked = run_once(engine, client)

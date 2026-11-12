@@ -7,6 +7,8 @@ const search = step('[aria-label="Søk i leads"]', 'Finn riktig kontakt', 'Skriv
 const book = step('[data-tour="meeting-sale"]', 'Book et møte', 'Velg «Book møte», finn kontakten og fyll ut tidspunkt, møteansvarlig og det dere har avklart.')
 
 const pages: Record<string, Step[]> = {
+  discovery: [step('[data-tour="discovery-settings"]', 'Velg hvem systemet skal finne', 'Velg bransjer og en Cold-kø. Aktiver søket og lagre. Systemet søker i Oslo hver time og oppretter høyst 20 nye bedriftskort per norsk kalenderdag.'),
+    step('[data-tour="discovery-results"]', 'Kontroller treffene', 'Her ser du importerte bedrifter og treff som ble utelatt. Trykk på et bedriftsnavn for å åpne kundekortet. Treff uten telefon må gjennomgås og få et kontrollert bedriftsnummer før de legges i Cold-køen.')],
   overview: [
     step('.day-metrics button', 'Start med neste samtale', '«Klar til oppfølging» åpner ringelisten med nye leads og tilbakekallinger. De øvrige nøkkeltallene åpner tilbakekallinger, møter eller salg.'),
     step('.console-pipeline', 'Les leadstatusen', 'Hver rad viser hvor mange kontakter som har den statusen nå. Velg for eksempel «Ring tilbake» for å åpne ringelisten med det filteret.'),
@@ -57,6 +59,7 @@ const introductions: Record<string, string> = {
   projects: 'Prosjektkortene viser hvilke arbeidsområder du har tilgang til. Hvert prosjekt har egne kunder, salgsdata og rettigheter.',
   tasks: 'Bruk oppfølgingskøen for avtaler som trenger en ansvarlig og en frist, for eksempel å sende tilbud etter en samtale.',
   reports: 'Her undersøker du resultatene. Start med lederoversikten for å sammenligne prosjekter, eller åpne prosjektanalysen for å følge utviklingen over tid.',
+  discovery: 'Finn nye bedrifter automatisk fra Brønnøysundregistrene. Du velger bransjer og mottakskø, og følger importhistorikken her.',
 }
 
 export function pageSteps(view: string, label: string, full: boolean, finalPage: boolean) {

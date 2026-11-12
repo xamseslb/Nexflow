@@ -89,6 +89,7 @@ class Lead(Record, Scoped, Base):
     pipeline_step: Mapped[int] = mapped_column(Integer, server_default="1")
     enrichment: Mapped[dict] = mapped_column(JSONB, default=dict)
     blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    review_required: Mapped[bool] = mapped_column(Boolean, server_default="false")
     reserved_by: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     reserved_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     callback_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -228,3 +229,32 @@ class FollowUp(Record, Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="open")
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     idempotency_key: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
+
+
+class DiscoverySettings(Record, Scoped, Base):
+    __tablename__ = "discovery_settings"
+    __table_args__ = scope_constraints(UniqueConstraint("project_id"),
+        ForeignKeyConstraint(["call_list_id", "project_id", "partner_id"],
+                             ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"]))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    municipality: Mapped[str] = mapped_column(String(4), server_default="0301")
+    daily_limit: Mapped[int] = mapped_column(Integer, server_default="20")
+    industries: Mapped[list] = mapped_column(JSONB, default=list)
+    call_list_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    page: Mapped[int] = mapped_column(Integer, server_default="0")
+    offset: Mapped[int] = mapped_column(Integer, server_default="0")
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_summary: Mapped[dict] = mapped_column(JSONB, default=dict)
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class DiscoveryRecord(Record, Scoped, Base):
+    __tablename__ = "discovery_records"
+    __table_args__ = scope_constraints(UniqueConstraint("project_id", "org_number"), lead_fk())
+    org_number: Mapped[str] = mapped_column(String(9))
+    company: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(30))
+    reason: Mapped[str] = mapped_column(String(200))
+    lead_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    source_url: Mapped[str] = mapped_column(Text)
