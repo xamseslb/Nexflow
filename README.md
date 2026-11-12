@@ -168,6 +168,15 @@ privatpersoner, og den utfører ingen oppringinger.
 
 ### Gratis timekjøring på GitHub Actions
 
+Aktivert 12. november 2026: `WORKER_DATABASE_URL` er lagret som Actions-secret,
+og `ENRICHMENT_ENABLED=true`. Den første manuelle kjøringen på `main` bestod:
+https://github.com/xamseslb/Nexflow/actions/runs/43299045440
+Den behandlet én forfalt testjobb på 20 sekunders samlet jobbkjøretid.
+Supabase ble kontrollert etterpå: Bouvet-testkortet fikk nytt `fetched_at`,
+roller/regnskap/nettside med status `ok` og nytt forfall neste dag.
+Testen bekrefter faktisk innhenting og lagring fra GitHub, ikke bare oppstart.
+Hele backend- og frontend-CI for samme kodeversjon bestod også.
+
 `.github/workflows/enrichment.yml` kjører ved minutt 17 hver time (UTC), samt
 manuelt fra Actions → Hourly company enrichment → Run workflow på `main`.
 Den er sperret til repository-variabelen `ENRICHMENT_ENABLED` er `true`.
