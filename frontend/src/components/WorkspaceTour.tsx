@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { Button } from './ui/button'
+import { Dialog } from './ui/dialog'
 import { pageSteps, tourTarget } from './workspaceTourSteps'
 import './workspace-tour.css'
 
@@ -14,21 +15,33 @@ const seenThisSession = new Set<string>()
 
 export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpen, closeMenu }: TourProps) {
   const key = 'nexflow:tour:v2:' + owner
-  const [finished, setFinished] = useState(() => {
-    if (replay) return false
-    if (seenThisSession.has(key)) return true
-    try { return Boolean(localStorage.getItem(key)) } catch { return false }
+  const [phase, setPhase] = useState<'offer' | 'running' | 'closed'>(() => {
+    if (replay) return 'running'
+    if (seenThisSession.has(key)) return 'closed'
+    try { if (localStorage.getItem(key)) return 'closed' } catch { /* Storage can be unavailable. */ }
+    return 'offer'
   })
   const [chapter, setChapter] = useState({ id: full ? 'overview' : view, atEnd: false })
   const position = pages.findIndex(page => page.id === chapter.id)
-  if (finished || !ready || position < 0) return null
+  if (phase === 'closed' || !ready || position < 0) return null
 
-  function finish() {
+  function choose(next: 'running' | 'closed') {
     seenThisSession.add(key)
     try { localStorage.setItem(key, 'seen') } catch { /* Remember the choice for the current session. */ }
-    setFinished(true)
+    setPhase(next)
+  }
+  function finish() {
+    choose('closed')
     if (menuOpen) closeMenu()
   }
+
+  if (phase === 'offer') return <Dialog open onOpenChange={open => { if (!open) finish() }}
+    title="Vil du ha en omvisning?" description="Se hvordan du bruker Nexflow, steg for steg. Du kan også starte omvisningen senere fra Hjelp.">
+    <div className="flex flex-wrap justify-end gap-2">
+      <Button variant="outline" onClick={finish}>Hopp over</Button>
+      <Button onClick={() => choose('running')}>Start omvisning</Button>
+    </div>
+  </Dialog>
 
   if (view !== chapter.id) {
     return <NavigationHint page={pages[position]} menuOpen={menuOpen} onSkip={finish} onBack={() => {

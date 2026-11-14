@@ -101,6 +101,7 @@ test('partner has read-only sale view and no document or administrative actions'
   await page.evaluate(() => localStorage.removeItem('nexflow:tour:v2:00000000-0000-4000-8000-000000000001'))
   await login(page,'test-only-password')
   const tour = page.getByRole('dialog', { name: 'Omvisning i Nexflow' })
+  await page.getByRole('button', { name: 'Start omvisning', exact: true }).click()
   await expect(tour).toBeVisible()
   const headings = []
   while (true) {
