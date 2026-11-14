@@ -2,10 +2,10 @@ import { expect, test, type Page } from '@playwright/test'
 
 // Intercept only the dedicated e2e identity provider and local API.
 // Run the actual login, forms, downloads and Storage client without customer accounts.
-async function setup(page: Page, role = 'admin') {
+async function setup(page: Page, role = 'admin', metadata: Record<string, unknown> = {}) {
   const id = '00000000-0000-4000-8000-000000000001'
   const seller = '00000000-0000-4000-8000-000000000002'
-  const user = { id, email:'tester@example.invalid', aud:'authenticated', role:'authenticated', app_metadata:{}, user_metadata:{}, identities:[], created_at:new Date().toISOString() }
+  const user = { id, email:'tester@example.invalid', aud:'authenticated', role:'authenticated', app_metadata:{}, user_metadata:metadata, identities:[], created_at:new Date().toISOString() }
   const exp = Math.floor(Date.now()/1000)+3600
   const jwt = ['{"alg":"HS256","typ":"JWT"}', JSON.stringify({sub:id, aud:'authenticated', role:'authenticated', exp}), 'signature'].map(v => Buffer.from(v).toString('base64url')).join('.')
   let savedTeam = 'Nord'
@@ -19,7 +19,10 @@ async function setup(page: Page, role = 'admin') {
       if (req.postDataJSON().password !== 'test-only-password') return route.fulfill({status:400,json:{error_code:'invalid_credentials',msg:'Invalid login credentials'}})
       return route.fulfill({json:{user, access_token:jwt, refresh_token:'test-refresh', token_type:'bearer', expires_in:3600, expires_at:exp}})
     }
-    if (path === '/auth/v1/user') return route.fulfill({json:user})
+    if (path === '/auth/v1/user') {
+      if (req.method() === 'PUT') Object.assign(metadata, req.postDataJSON().data)
+      return route.fulfill({json:user})
+    }
     if (path === '/auth/v1/logout') return route.fulfill({status:204})
     if (path.includes('/object/list/')) return route.fulfill({json:object ? [{name:object}] : []})
     if (path.includes('/object/') && req.method()==='POST') {
@@ -60,6 +63,30 @@ async function go(page: Page, name: string) {
   if (await menu.isVisible()) await menu.click()
   await page.getByRole('navigation').getByRole('button',{name,exact:true}).click()
 }
+
+test('a skipped tour follows the account to another device with empty browser storage', async ({page, browser, baseURL}) => {
+  const metadata: Record<string, unknown> = {}
+  await setup(page, 'seller', metadata)
+  await page.evaluate(() => localStorage.clear())
+  await login(page, 'test-only-password')
+  const offer = 'Vil du ha en omvisning?'
+  await page.getByRole('dialog', {name:offer}).getByRole('button', {name:'Hopp over'}).click()
+  await expect.poll(() => metadata.nexflow_tour_seen).toBe(true)
+
+  const other = await browser.newContext({baseURL, viewport:{width:390,height:844}, storageState:{cookies:[],origins:[]}})
+  try {
+    const phone = await other.newPage()
+    await setup(phone, 'seller', metadata)
+    const fetched = phone.waitForResponse(r => r.url().endsWith('/auth/v1/user') && r.request().method() === 'GET')
+    await login(phone, 'test-only-password')
+    await fetched
+    await expect(phone.getByLabel('Aktivt prosjekt')).toHaveValue('one')
+    await expect(phone.getByRole('dialog',{name:offer})).toHaveCount(0)
+    await phone.getByRole('button',{name:'Vis informasjon'}).click()
+    await phone.getByRole('button',{name:'Start hele omvisningen'}).click()
+    await expect(phone.getByRole('dialog',{name:'Omvisning i Nexflow'})).toBeVisible()
+  } finally { await other.close() }
+})
 
 test('signed-in admin can retry login, refresh, update access, move seller and transfer a receipt', async ({page}) => {
   const service = await setup(page)

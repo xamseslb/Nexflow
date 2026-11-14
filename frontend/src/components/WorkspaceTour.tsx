@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { Button } from './ui/button'
 import { Dialog } from './ui/dialog'
+import { supabase } from '@/lib/api'
 import { pageSteps, tourTarget } from './workspaceTourSteps'
 import './workspace-tour.css'
 
@@ -15,19 +16,62 @@ const seenThisSession = new Set<string>()
 
 export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpen, closeMenu }: TourProps) {
   const key = 'nexflow:tour:v2:' + owner
-  const [phase, setPhase] = useState<'offer' | 'running' | 'closed'>(() => {
+  const [phase, setPhase] = useState<'checking' | 'offer' | 'running' | 'closed'>(() => {
     if (replay) return 'running'
     if (seenThisSession.has(key)) return 'closed'
     try { if (localStorage.getItem(key)) return 'closed' } catch { /* Storage can be unavailable. */ }
-    return 'offer'
+    return owner === 'demo' ? 'offer' : 'checking'
   })
+  const [decided, setDecided] = useState(() => phase === 'closed')
+  useEffect(() => {
+    const auth = supabase?.auth
+    if (!auth || owner === 'demo' || !owner) return
+    let cancelled = false, busy = false, done = false
+    let retry: ReturnType<typeof setTimeout>
+    async function sync() {
+      if (!auth || cancelled || busy || done || !navigator.onLine) return
+      busy = true
+      clearTimeout(retry)
+      try {
+        // A restored session may predate a decision on another device.
+        const { data: { user }, error } = await auth.getUser()
+        if (error || !user) throw new Error('Account unavailable')
+        if (cancelled || user.id !== owner) return
+        if (user.user_metadata?.nexflow_tour_seen === true) {
+          seenThisSession.add(key)
+          try { localStorage.setItem(key, 'seen') } catch { /* Optional offline cache. */ }
+          setPhase(current => current === 'running' ? current : 'closed')
+        } else if (decided) {
+          // Also migrate choices saved by earlier versions on this browser.
+          const { error: saveError } = await auth.updateUser({ data: { nexflow_tour_seen: true } })
+          if (saveError) throw saveError
+        } else {
+          setPhase(current => current === 'checking' ? 'offer' : current)
+          return
+        }
+        done = true
+      } catch {
+        if (!cancelled) retry = setTimeout(sync, 30_000)
+      } finally { busy = false }
+    }
+    void sync()
+    window.addEventListener('online', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      cancelled = true
+      clearTimeout(retry)
+      window.removeEventListener('online', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [decided, key, owner])
   const [chapter, setChapter] = useState({ id: full ? 'overview' : view, atEnd: false })
   const position = pages.findIndex(page => page.id === chapter.id)
-  if (phase === 'closed' || !ready || position < 0) return null
+  if (phase === 'closed' || phase === 'checking' || !ready || position < 0) return null
 
   function choose(next: 'running' | 'closed') {
     seenThisSession.add(key)
     try { localStorage.setItem(key, 'seen') } catch { /* Remember the choice for the current session. */ }
+    setDecided(true)
     setPhase(next)
   }
   function finish() {
