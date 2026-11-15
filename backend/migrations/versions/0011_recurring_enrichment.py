@@ -1,4 +1,5 @@
 """Schedule one recurring company lookup per existing B2B lead."""
+
 from alembic import op
 
 revision = "0011"

@@ -1,4 +1,5 @@
 """Keep project team and seller strengths; capture the team at the time of sale."""
+
 from alembic import op
 
 revision = "0008"
@@ -25,4 +26,3 @@ def upgrade():
 
 def downgrade():
     raise RuntimeError("Behold historisk teamtilhørighet på registrerte salg.")
-

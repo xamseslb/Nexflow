@@ -14,6 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dev = ["ruff==0.14.4"]
 test = ["pytest>=8.3,<10"]
 
 [tool.setuptools.packages.find]
@@ -25,3 +26,7 @@ app = ["data/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["postgres: requires a disposable Supabase/PostgreSQL test database"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

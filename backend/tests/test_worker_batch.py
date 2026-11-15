@@ -1,5 +1,5 @@
-from unittest.mock import Mock
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.exc import OperationalError
@@ -26,7 +26,10 @@ def test_batch_checks_deadline_before_next_job(monkeypatch):
     run = Mock(return_value=True)
     monkeypatch.setattr(worker, "run_once", run)
     monkeypatch.setattr(worker.time, "monotonic", Mock(side_effect=[100, 100, 221]))
-    assert worker.run_batch(None, None, max_seconds=120) == {"processed": 1, "stop_reason": "time_limit"}
+    assert worker.run_batch(None, None, max_seconds=120) == {
+        "processed": 1,
+        "stop_reason": "time_limit",
+    }
     assert run.call_count == 1
 
 
@@ -51,8 +54,15 @@ def test_cli_database_failure_is_redacted_and_engine_closed(monkeypatch, capsys)
     monkeypatch.setattr(worker, "settings", lambda: SimpleNamespace(worker_database_url="secret"))
     monkeypatch.setattr(worker, "check_production", Mock())
     monkeypatch.setattr(worker, "create_engine", Mock(return_value=engine))
-    monkeypatch.setattr(worker, "run_once", Mock(side_effect=OperationalError(
-        "private SQL", {"customer": "private name"}, Exception("private password"))))
+    monkeypatch.setattr(
+        worker,
+        "run_once",
+        Mock(
+            side_effect=OperationalError(
+                "private SQL", {"customer": "private name"}, Exception("private password")
+            )
+        ),
+    )
     with pytest.raises(SystemExit) as result:
         worker.main()
     assert "private" not in str(result.value)

@@ -1,4 +1,5 @@
 """Initial Hub schema and deny-by-default access control."""
+
 from pathlib import Path
 from alembic import op
 from migrations.schema_v1 import Base
@@ -19,4 +20,6 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Destructive rollback is intentionally disabled; restore a verified backup or write a reviewed forward migration")
+    raise RuntimeError(
+        "Destructive rollback is intentionally disabled; restore a verified backup or write a reviewed forward migration"
+    )

@@ -1,7 +1,20 @@
 from datetime import datetime
 from uuid import UUID, uuid4
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKeyConstraint, Integer, String, Text, UniqueConstraint, CheckConstraint, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -22,9 +35,14 @@ class Partner(Record, Base):
     agreement_signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+# Composite keys let dependent records enforce that their project belongs to the same partner.
 class Project(Record, Base):
     __tablename__ = "projects"
-    __table_args__ = (UniqueConstraint("id", "partner_id"), ForeignKeyConstraint(["partner_id"], ["hub.partners.id"]), {"schema": "hub"})
+    __table_args__ = (
+        UniqueConstraint("id", "partner_id"),
+        ForeignKeyConstraint(["partner_id"], ["hub.partners.id"]),
+        {"schema": "hub"},
+    )
     partner_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
@@ -36,7 +54,11 @@ class Project(Record, Base):
 
 class Membership(Base):
     __tablename__ = "memberships"
-    __table_args__ = (ForeignKeyConstraint(["project_id"], ["hub.projects.id"]), CheckConstraint("role IN ('seller','booker','closer','leader','partner','admin')"), {"schema": "hub"})
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id"], ["hub.projects.id"]),
+        CheckConstraint("role IN ('seller','booker','closer','leader','partner','admin')"),
+        {"schema": "hub"},
+    )
     project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     role: Mapped[str] = mapped_column(String(20))
@@ -51,9 +73,14 @@ class Scoped:
 
 
 def scope_constraints(*extra):
-    return (UniqueConstraint("id", "project_id", "partner_id"),
-            ForeignKeyConstraint(["project_id", "partner_id"], ["hub.projects.id", "hub.projects.partner_id"]),
-            *extra, {"schema": "hub"})
+    return (
+        UniqueConstraint("id", "project_id", "partner_id"),
+        ForeignKeyConstraint(
+            ["project_id", "partner_id"], ["hub.projects.id", "hub.projects.partner_id"]
+        ),
+        *extra,
+        {"schema": "hub"},
+    )
 
 
 class CallList(Record, Scoped, Base):
@@ -61,7 +88,9 @@ class CallList(Record, Scoped, Base):
     __table_args__ = scope_constraints(
         CheckConstraint("category IN ('hot','cold','winback')"),
         UniqueConstraint("project_id", "name"),
-        ForeignKeyConstraint(["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+        ForeignKeyConstraint(
+            ["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]
+        ),
     )
     name: Mapped[str] = mapped_column(String(100))
     category: Mapped[str] = mapped_column(String(10))
@@ -70,8 +99,14 @@ class CallList(Record, Scoped, Base):
 
 class Lead(Record, Scoped, Base):
     __tablename__ = "leads"
-    __table_args__ = scope_constraints(CheckConstraint("kind IN ('b2b','b2c')"), CheckConstraint("status IN ('new','callback','meeting','sold','declined')"),
-        ForeignKeyConstraint(["call_list_id", "project_id", "partner_id"], ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"]))
+    __table_args__ = scope_constraints(
+        CheckConstraint("kind IN ('b2b','b2c')"),
+        CheckConstraint("status IN ('new','callback','meeting','sold','declined')"),
+        ForeignKeyConstraint(
+            ["call_list_id", "project_id", "partner_id"],
+            ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"],
+        ),
+    )
     call_list_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     queue_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     company: Mapped[str] = mapped_column(String(200))
@@ -96,7 +131,10 @@ class Lead(Record, Scoped, Base):
 
 
 def lead_fk():
-    return ForeignKeyConstraint(["lead_id", "project_id", "partner_id"], ["hub.leads.id", "hub.leads.project_id", "hub.leads.partner_id"])
+    return ForeignKeyConstraint(
+        ["lead_id", "project_id", "partner_id"],
+        ["hub.leads.id", "hub.leads.project_id", "hub.leads.partner_id"],
+    )
 
 
 class RegistryCheck(Record, Scoped, Base):
@@ -135,11 +173,17 @@ class Call(Record, Scoped, Base):
 class QualityFlag(Record, Scoped, Base):
     __tablename__ = "quality_flags"
     __table_args__ = scope_constraints(
-        ForeignKeyConstraint(["call_id", "project_id", "partner_id"],
-                             ["hub.calls.id", "hub.calls.project_id", "hub.calls.partner_id"]),
+        ForeignKeyConstraint(
+            ["call_id", "project_id", "partner_id"],
+            ["hub.calls.id", "hub.calls.project_id", "hub.calls.partner_id"],
+        ),
         UniqueConstraint("call_id"),
-        ForeignKeyConstraint(["project_id", "reported_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
-        ForeignKeyConstraint(["project_id", "reviewed_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+        ForeignKeyConstraint(
+            ["project_id", "reported_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]
+        ),
+        ForeignKeyConstraint(
+            ["project_id", "reviewed_by"], ["hub.memberships.project_id", "hub.memberships.user_id"]
+        ),
     )
     call_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     reported_by: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
@@ -151,7 +195,10 @@ class QualityFlag(Record, Scoped, Base):
 
 class Product(Record, Scoped, Base):
     __tablename__ = "products"
-    __table_args__ = scope_constraints(CheckConstraint("price_ore > 0"), CheckConstraint("hub_bps >= 0 AND seller_bps >= 0 AND hub_bps + seller_bps <= 10000"))
+    __table_args__ = scope_constraints(
+        CheckConstraint("price_ore > 0"),
+        CheckConstraint("hub_bps >= 0 AND seller_bps >= 0 AND hub_bps + seller_bps <= 10000"),
+    )
     name: Mapped[str] = mapped_column(String(200))
     price_ore: Mapped[int] = mapped_column(BigInteger)
     hub_bps: Mapped[int] = mapped_column(Integer)
@@ -161,7 +208,15 @@ class Product(Record, Scoped, Base):
 
 class Sale(Record, Scoped, Base):
     __tablename__ = "sales"
-    __table_args__ = scope_constraints(lead_fk(), ForeignKeyConstraint(["product_id", "project_id", "partner_id"], ["hub.products.id", "hub.products.project_id", "hub.products.partner_id"]), UniqueConstraint("project_id", "idempotency_key"), CheckConstraint("amount_ore > 0"))
+    __table_args__ = scope_constraints(
+        lead_fk(),
+        ForeignKeyConstraint(
+            ["product_id", "project_id", "partner_id"],
+            ["hub.products.id", "hub.products.project_id", "hub.products.partner_id"],
+        ),
+        UniqueConstraint("project_id", "idempotency_key"),
+        CheckConstraint("amount_ore > 0"),
+    )
     lead_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     product_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
     seller_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
@@ -205,7 +260,9 @@ class Job(Record, Scoped, Base):
     payload: Mapped[dict] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     attempts: Mapped[int] = mapped_column(Integer, default=0)
-    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     last_error: Mapped[str | None] = mapped_column(Text)
 
 
@@ -213,10 +270,14 @@ class FollowUp(Record, Scoped, Base):
     __tablename__ = "follow_ups"
     __table_args__ = scope_constraints(
         lead_fk(),
-        ForeignKeyConstraint(["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]),
+        ForeignKeyConstraint(
+            ["project_id", "assignee_id"], ["hub.memberships.project_id", "hub.memberships.user_id"]
+        ),
         CheckConstraint("status IN ('open','done','cancelled')"),
         CheckConstraint("length(trim(title)) > 0"),
-        CheckConstraint("(status = 'open' AND completed_at IS NULL) OR (status <> 'open' AND completed_at IS NOT NULL)"),
+        CheckConstraint(
+            "(status = 'open' AND completed_at IS NULL) OR (status <> 'open' AND completed_at IS NOT NULL)"
+        ),
         UniqueConstraint("project_id", "created_by", "idempotency_key"),
     )
     lead_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True))
@@ -233,9 +294,13 @@ class FollowUp(Record, Scoped, Base):
 
 class DiscoverySettings(Record, Scoped, Base):
     __tablename__ = "discovery_settings"
-    __table_args__ = scope_constraints(UniqueConstraint("project_id"),
-        ForeignKeyConstraint(["call_list_id", "project_id", "partner_id"],
-                             ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"]))
+    __table_args__ = scope_constraints(
+        UniqueConstraint("project_id"),
+        ForeignKeyConstraint(
+            ["call_list_id", "project_id", "partner_id"],
+            ["hub.call_lists.id", "hub.call_lists.project_id", "hub.call_lists.partner_id"],
+        ),
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     municipality: Mapped[str] = mapped_column(String(4), server_default="0301")
     daily_limit: Mapped[int] = mapped_column(Integer, server_default="20")
@@ -243,7 +308,9 @@ class DiscoverySettings(Record, Scoped, Base):
     call_list_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     page: Mapped[int] = mapped_column(Integer, server_default="0")
     offset: Mapped[int] = mapped_column(Integer, server_default="0")
-    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    next_run_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_summary: Mapped[dict] = mapped_column(JSONB, default=dict)
     last_error: Mapped[str | None] = mapped_column(Text)

@@ -1,8 +1,9 @@
-from fastapi.testclient import TestClient
-from app.main import app
-from app.schemas import LeadCreate, CallResult
-from pydantic import ValidationError
 import pytest
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
+from app.main import app
+from app.schemas import CallResult, LeadCreate
 
 client = TestClient(app)
 
@@ -13,7 +14,14 @@ def test_liveness_is_public_and_private_responses_not_cached():
     assert response.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("path", ["/api/v1/me", "/api/v1/projects", "/api/v1/projects/00000000-0000-0000-0000-000000000001/leads"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/me",
+        "/api/v1/projects",
+        "/api/v1/projects/00000000-0000-0000-0000-000000000001/leads",
+    ],
+)
 def test_no_anonymous_crm_access(path):
     assert client.get(path).status_code == 401
 
@@ -33,11 +41,14 @@ def test_callback_requires_aware_timestamp():
         CallResult(outcome="callback", callback_at="2026-11-01T10:00:00")
 
 
-@pytest.mark.parametrize("path", [
-    "/api/v1/projects/00000000-0000-0000-0000-000000000001/reports",
-    "/api/v1/projects/00000000-0000-0000-0000-000000000001/follow-ups",
-    "/api/v1/projects/00000000-0000-0000-0000-000000000001/leads/00000000-0000-0000-0000-000000000002/activity",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/projects/00000000-0000-0000-0000-000000000001/reports",
+        "/api/v1/projects/00000000-0000-0000-0000-000000000001/follow-ups",
+        "/api/v1/projects/00000000-0000-0000-0000-000000000001/leads/00000000-0000-0000-0000-000000000002/activity",
+    ],
+)
 def test_workspace_endpoints_require_authentication(path):
     response = client.get(path)
     assert response.status_code == 401

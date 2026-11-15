@@ -11,7 +11,10 @@ test('customer record links a completed call to a manual manager review', async 
   if (await menu.isVisible()) await menu.click()
   await page.getByRole('navigation').getByRole('button', { name: 'Kunder', exact: true }).click()
   await page.getByRole('textbox', { name: 'Søk i kunderegister' }).fill('Emma')
-  await page.locator('.customer-index').getByRole('button', { name: /Fjord & Form/ }).click()
+  await page
+    .locator('.customer-index')
+    .getByRole('button', { name: /Fjord & Form/ })
+    .click()
   await page.getByRole('button', { name: 'Se ekte bedriftsoppslag' }).click()
   const example = page.getByRole('dialog', { name: 'Bouvet Norge AS' })
   await expect(example).toContainText('Per Gunnar Tronsli')
@@ -19,9 +22,11 @@ test('customer record links a completed call to a manual manager review', async 
   await expect(example).toContainText('Årsregnskap 2025')
   await example.getByRole('button', { name: 'Lukk' }).click()
   const business = page.getByRole('region', { name: 'Bedriftsopplysninger' })
-  await expect(business.locator('dl > div').filter({ hasText: 'Ansatte' }).locator('dd')).toHaveText('12')
+  await expect(
+    business.locator('dl > div').filter({ hasText: 'Ansatte' }).locator('dd'),
+  ).toHaveText('12')
   await expect(business).toContainText('Eksempeldata')
-  await expect(page.getByText('Kunden ønsker tilbud på torsdag', {exact: true})).toBeVisible()
+  await expect(page.getByText('Kunden ønsker tilbud på torsdag', { exact: true })).toBeVisible()
   await page.getByLabel('Velg neste salgstrinn').selectOption('6')
   await expect(page.getByText('Tilbud / forhandling · 6 av 8')).toBeVisible()
   await page.getByRole('button', { name: 'Flagg samtale' }).click()
@@ -33,17 +38,24 @@ test('customer record links a completed call to a manual manager review', async 
   await page.getByRole('button', { name: 'Lagre vurdering' }).click()
   await expect(page.getByText('Ingen åpne saker.')).toBeVisible()
   await page.getByLabel('Kvalitetssaker').selectOption('true')
-  await expect(page.getByText('Oppfølging avklart med selger', {exact: false})).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()
+  await expect(page.getByText('Oppfølging avklart med selger', { exact: false })).toBeVisible()
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
 })
 
-test('meeting exports a private-data-minimal UTC calendar file and records an outcome after its end', async ({ page }) => {
+test('meeting exports a private-data-minimal UTC calendar file and records an outcome after its end', async ({
+  page,
+}) => {
   await page.clock.install({ time: new Date('2026-11-02T08:00:00Z') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   const menu = page.getByRole('button', { name: 'Åpne meny' })
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button', { name: /^Møter/ }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: /^Møter/ })
+    .click()
   const downloaded = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Last ned kalenderfil' }).click()
   const download = await downloaded
@@ -58,7 +70,10 @@ test('meeting exports a private-data-minimal UTC calendar file and records an ou
   expect(text).not.toContain('budsjett')
   await page.clock.setSystemTime(new Date('2026-11-05T08:00:00Z'))
   await page.getByRole('button', { name: 'Registrer møteutfall' }).click()
-  await page.getByRole('dialog').getByRole('combobox', { name: 'Møteutfall', exact: true }).selectOption('qualified')
+  await page
+    .getByRole('dialog')
+    .getByRole('combobox', { name: 'Møteutfall', exact: true })
+    .selectOption('qualified')
   await page.getByRole('button', { name: 'Lagre møteutfall' }).click()
   await expect(page.locator('.meeting-card')).toContainText('Kvalifisert')
   await expect(page.getByRole('button', { name: 'Registrer møteutfall' })).toHaveCount(0)
@@ -69,7 +84,10 @@ test('project type is editable independently of the contact market', async ({ pa
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   const menu = page.getByRole('button', { name: 'Åpne meny' })
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button', { name: 'Prosjekter', exact: true }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: 'Prosjekter', exact: true })
+    .click()
   await page.getByRole('button', { name: 'Endre prosjekttype for Digitale vekstpakker' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Prosjekttype' }).fill('Fornyelse')

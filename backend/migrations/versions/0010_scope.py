@@ -1,4 +1,5 @@
 """Restrict role escalation and customer notes even for direct queries as hub_api."""
+
 from alembic import op
 
 revision = "0010"
@@ -36,4 +37,3 @@ def upgrade():
 
 def downgrade():
     raise RuntimeError("Behold tilgangskontrollene til en ny migrering er gjennomgått.")
-

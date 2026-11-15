@@ -1,10 +1,14 @@
 import { expect, test } from '@playwright/test'
 
-test('password reset sends the exact site redirect without revealing account existence', async ({ page }) => {
+test('password reset sends the exact site redirect without revealing account existence', async ({
+  page,
+}) => {
   let sent = false
-  await page.route('https://nexflow-e2e.invalid/auth/v1/recover**', route => {
+  await page.route('https://nexflow-e2e.invalid/auth/v1/recover**', (route) => {
     expect(route.request().postDataJSON().email).toBe('tester@example.invalid')
-    expect(new URL(route.request().url()).searchParams.get('redirect_to')).toBe('http://127.0.0.1:5187/?auth=password')
+    expect(new URL(route.request().url()).searchParams.get('redirect_to')).toBe(
+      'http://127.0.0.1:5187/?auth=password',
+    )
     sent = true
     return route.fulfill({ json: {} })
   })
@@ -27,13 +31,32 @@ test('an expired password link does not expose a password form', async ({ page }
   expect(page.url()).not.toContain('auth=password')
 })
 
-test('an invitation opens password setup, validates confirmation and updates the authenticated account', async ({ page }) => {
+test('an invitation opens password setup, validates confirmation and updates the authenticated account', async ({
+  page,
+}) => {
   const id = '00000000-0000-4000-8000-000000000001'
-  const user = { id, email: 'tester@example.invalid', aud: 'authenticated', role: 'authenticated', app_metadata: {}, user_metadata: {}, identities: [], created_at: new Date().toISOString() }
+  const user = {
+    id,
+    email: 'tester@example.invalid',
+    aud: 'authenticated',
+    role: 'authenticated',
+    app_metadata: {},
+    // This returning account has already synced its tour preference. Its only
+    // expected Auth update in this scenario is the invited user's new password.
+    user_metadata: { nexflow_tour_seen: true },
+    identities: [],
+    created_at: new Date().toISOString(),
+  }
   const exp = Math.floor(Date.now() / 1000) + 3600
-  const token = ['{"alg":"HS256","typ":"JWT"}', JSON.stringify({ sub: id, aud: 'authenticated', role: 'authenticated', exp }), 'fake-signature'].map(v => Buffer.from(v).toString('base64url')).join('.')
+  const token = [
+    '{"alg":"HS256","typ":"JWT"}',
+    JSON.stringify({ sub: id, aud: 'authenticated', role: 'authenticated', exp }),
+    'fake-signature',
+  ]
+    .map((v) => Buffer.from(v).toString('base64url'))
+    .join('.')
   let updates = 0
-  await page.route('https://nexflow-e2e.invalid/auth/v1/user', route => {
+  await page.route('https://nexflow-e2e.invalid/auth/v1/user', (route) => {
     if (route.request().method() === 'PUT') {
       expect(route.request().headers().authorization).toBe('Bearer ' + token)
       expect(route.request().postDataJSON().password).toBe('test-only-long-password')
@@ -41,8 +64,12 @@ test('an invitation opens password setup, validates confirmation and updates the
     }
     return route.fulfill({ json: user })
   })
-  await page.route('**/api/v1/projects', route => route.fulfill({ json: [] }))
-  await page.goto('/#access_token=' + token + '&refresh_token=fake-refresh&expires_in=3600&token_type=bearer&type=invite')
+  await page.route('**/api/v1/projects', (route) => route.fulfill({ json: [] }))
+  await page.goto(
+    '/#access_token=' +
+      token +
+      '&refresh_token=fake-refresh&expires_in=3600&token_type=bearer&type=invite',
+  )
   await expect(page.getByRole('heading', { name: 'Velg passord' })).toBeVisible()
   await expect(page.getByLabel('Nytt passord', { exact: true })).toBeVisible()
   // The token is consumed and the intent survives a page reload.

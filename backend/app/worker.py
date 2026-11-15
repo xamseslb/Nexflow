@@ -1,4 +1,5 @@
 """Refresh B2B customer cards using the restricted worker login."""
+
 import argparse
 import json
 import time
@@ -7,12 +8,13 @@ from uuid import UUID
 
 import httpx
 from sqlalchemy import String, cast, create_engine, or_, select, text
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from .company_registry import company_data, match_company
 from .config import settings
 from .deployment import check_production
+from .discovery_import import run_discovery_once
 from .models import Job, Lead
 
 
@@ -33,18 +35,36 @@ def schedule(job, partial=False):
 
 def run_once(engine, client: httpx.Client) -> bool:
     with Session(engine) as db, db.begin():
-        unsafe = db.scalar(text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user"))
+        unsafe = db.scalar(
+            text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")
+        )
         if unsafe:
             raise RuntimeError("Worker requires a restricted login role")
         db.execute(text("SET LOCAL ROLE hub_worker"))
         # Existing missing-phone contacts get the new website lookup once, without
         # waiting a day or resetting daily discovery quotas. Normal retries remain bounded.
-        unsearched = select(cast(Lead.id, String)).where(Lead.kind == "b2b", Lead.review_required.is_(True),
-            Lead.status == "new", Lead.enrichment["website_phone_status"].astext.is_(None),
-            Lead.enrichment["lookup_status"].astext == "ok")
-        job = db.scalar(select(Job).where(Job.kind == "brreg_enrichment", Job.status == "pending",
-                        or_(Job.available_at <= datetime.now(timezone.utc), Job.payload["lead_id"].astext.in_(unsearched)))
-                        .order_by(Job.available_at, Job.id).with_for_update(skip_locked=True).limit(1))
+        unsearched = select(cast(Lead.id, String)).where(
+            Lead.kind == "b2b",
+            Lead.review_required.is_(True),
+            Lead.status == "new",
+            Lead.enrichment["website_phone_status"].astext.is_(None),
+            Lead.enrichment["lookup_status"].astext == "ok",
+        )
+        # Keep the claim, updated facts and next due time in one transaction. Other workers skip this row.
+        job = db.scalar(
+            select(Job)
+            .where(
+                Job.kind == "brreg_enrichment",
+                Job.status == "pending",
+                or_(
+                    Job.available_at <= datetime.now(timezone.utc),
+                    Job.payload["lead_id"].astext.in_(unsearched),
+                ),
+            )
+            .order_by(Job.available_at, Job.id)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
         if not job:
             return False
         try:
@@ -52,8 +72,14 @@ def run_once(engine, client: httpx.Client) -> bool:
         except (KeyError, TypeError, ValueError, AttributeError):
             job.status, job.last_error = "failed", "Invalid lead identifier"
             return True
-        lead = db.scalar(select(Lead).where(Lead.id == lead_id, Lead.project_id == job.project_id,
-                                            Lead.partner_id == job.partner_id, Lead.kind == "b2b"))
+        lead = db.scalar(
+            select(Lead).where(
+                Lead.id == lead_id,
+                Lead.project_id == job.project_id,
+                Lead.partner_id == job.partner_id,
+                Lead.kind == "b2b",
+            )
+        )
         if not lead:
             job.status, job.last_error = "done", None
             return True
@@ -62,13 +88,22 @@ def run_once(engine, client: httpx.Client) -> bool:
             if number:
                 data = company_data(number, client, lead.enrichment)
             else:
-                data = {"lookup_status": "no_unique_match", "fetched_at": datetime.now(timezone.utc).isoformat()}
+                data = {
+                    "lookup_status": "no_unique_match",
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }
             lead.enrichment = data
             if data.get("industry"):
                 lead.industry = data["industry"][:120]
             if data.get("city"):
                 lead.city = data["city"][:100]
-            schedule(job, any(data.get(key) == "temporary_error" for key in ("roles_status", "accounts_status", "website_status")))
+            schedule(
+                job,
+                any(
+                    data.get(key) == "temporary_error"
+                    for key in ("roles_status", "accounts_status", "website_status")
+                ),
+            )
         except (httpx.HTTPError, OSError, ValueError, KeyError):
             lead.enrichment = {**(lead.enrichment or {}), "lookup_status": "temporary_error"}
             schedule(job, partial=True)
@@ -85,7 +120,6 @@ def run_batch(engine, client, *, max_jobs=20, max_seconds=120, discover=False):
         raise ValueError("Batch limits must be positive")
     started = time.monotonic()
     if discover:
-        from .discovery import run_discovery_once
         run_discovery_once(engine, client)
     processed = 0
     while processed < max_jobs:
@@ -108,28 +142,54 @@ def main():
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--once", action="store_true")
-    mode.add_argument("--batch", action="store_true", help="Process due jobs and exit, without idle polling")
-    mode.add_argument("--lookup", metavar="ORGNR", help="Read a company's current public facts without writing to the CRM")
+    mode.add_argument(
+        "--batch", action="store_true", help="Process due jobs and exit, without idle polling"
+    )
+    mode.add_argument(
+        "--lookup",
+        metavar="ORGNR",
+        help="Read a company's current public facts without writing to the CRM",
+    )
     parser.add_argument("--max-jobs", type=positive_int, default=20)
     parser.add_argument("--max-seconds", type=positive_int, default=120)
-    parser.add_argument("--discover", action="store_true", help="Search one configured project's next page before enrichment")
+    parser.add_argument(
+        "--discover",
+        action="store_true",
+        help="Search one configured project's next page before enrichment",
+    )
     args = parser.parse_args()
     if not args.batch and (args.max_jobs != 20 or args.max_seconds != 120):
         parser.error("Batch limits require --batch")
     if args.discover and not args.batch:
         parser.error("--discover requires --batch")
-    with httpx.Client(timeout=10, follow_redirects=False, headers={"User-Agent": "NexflowBot"}) as client:
+    with httpx.Client(
+        timeout=10, follow_redirects=False, headers={"User-Agent": "NexflowBot"}
+    ) as client:
         if args.lookup:
             print(json.dumps(company_data(args.lookup, client), ensure_ascii=False, indent=2))
             return
         if not settings().worker_database_url:
             raise SystemExit("WORKER_DATABASE_URL is required")
         check_production(settings(), worker=True)
-        engine = create_engine(settings().worker_database_url, pool_pre_ping=True, pool_size=2,
-                               connect_args={"connect_timeout": 10})
+        engine = create_engine(
+            settings().worker_database_url,
+            pool_pre_ping=True,
+            pool_size=2,
+            connect_args={"connect_timeout": 10},
+        )
         try:
             if args.batch:
-                print(json.dumps(run_batch(engine, client, max_jobs=args.max_jobs, max_seconds=args.max_seconds, discover=args.discover)))
+                print(
+                    json.dumps(
+                        run_batch(
+                            engine,
+                            client,
+                            max_jobs=args.max_jobs,
+                            max_seconds=args.max_seconds,
+                            discover=args.discover,
+                        )
+                    )
+                )
                 return
             while True:
                 worked = run_once(engine, client)
@@ -138,7 +198,9 @@ def main():
                 time.sleep(1 if worked else 3)
         except SQLAlchemyError:
             # Public CI logs must never contain driver messages, SQL or lead data.
-            raise SystemExit("Worker database operation failed; check connection and role grants") from None
+            raise SystemExit(
+                "Worker database operation failed; check connection and role grants"
+            ) from None
         finally:
             engine.dispose()
 

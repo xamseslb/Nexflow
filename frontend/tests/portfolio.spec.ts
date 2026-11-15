@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-test('manager portfolio separates sales type and customer segment, filters revenue and opens sale', async ({ page }) => {
+test('manager portfolio separates sales type and customer segment, filters revenue and opens sale', async ({
+  page,
+}) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   const menu = page.getByRole('button', { name: 'Åpne meny' })
@@ -8,17 +10,27 @@ test('manager portfolio separates sales type and customer segment, filters reven
   await page.getByRole('navigation').getByRole('button', { name: 'Rapporter' }).click()
   const portfolio = page.getByRole('region', { name: 'Lederoversikt' })
   await expect(portfolio).toContainText('1 registrert salg')
-  await expect(portfolio.getByRole('button', { name: /Kjøpende kunder/ }).locator('strong')).toHaveText('1')
-  await portfolio.getByRole('combobox', { name: 'Prosjekttype', exact: true }).selectOption('Møtebooking')
+  await expect(
+    portfolio.getByRole('button', { name: /Kjøpende kunder/ }).locator('strong'),
+  ).toHaveText('1')
+  await portfolio
+    .getByRole('combobox', { name: 'Prosjekttype', exact: true })
+    .selectOption('Møtebooking')
   await expect(portfolio).toContainText('Ingen registrerte salg i dette utvalget.')
-  await portfolio.getByRole('combobox', { name: 'Prosjekttype', exact: true }).selectOption('Direktesalg')
+  await portfolio
+    .getByRole('combobox', { name: 'Prosjekttype', exact: true })
+    .selectOption('Direktesalg')
   await portfolio.getByRole('combobox', { name: 'Kundesegment', exact: true }).selectOption('b2c')
   await expect(portfolio).toContainText('Ingen registrerte salg i dette utvalget.')
   await portfolio.getByRole('combobox', { name: 'Kundesegment', exact: true }).selectOption('b2b')
   await portfolio.getByRole('combobox', { name: 'Team', exact: true }).selectOption('Demoteam')
   await portfolio.getByRole('button', { name: /Vis Digitale vekstpakker/ }).click()
-  await expect(portfolio.getByRole('combobox', { name: 'Prosjekt', exact: true })).toHaveValue('demo-1')
-  await expect(portfolio.getByRole('combobox', { name: 'Team', exact: true })).toHaveValue('Demoteam')
+  await expect(portfolio.getByRole('combobox', { name: 'Prosjekt', exact: true })).toHaveValue(
+    'demo-1',
+  )
+  await expect(portfolio.getByRole('combobox', { name: 'Team', exact: true })).toHaveValue(
+    'Demoteam',
+  )
   await portfolio.getByRole('button', { name: /Havblikk Studio/ }).click()
   const detail = page.getByRole('dialog', { name: 'Havblikk Studio' })
   await expect(detail).toContainText('Selgerandel')
@@ -29,7 +41,9 @@ test('manager portfolio separates sales type and customer segment, filters reven
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
 
-test('projects, follow-ups and reports switch independently and portfolio tiles open the filtered records', async ({ page }) => {
+test('projects, follow-ups and reports switch independently and portfolio tiles open the filtered records', async ({
+  page,
+}) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   const screens = [
@@ -42,9 +56,14 @@ test('projects, follow-ups and reports switch independently and portfolio tiles 
     if (await menu.isVisible()) await menu.click()
     await page.getByRole('navigation').getByRole('button', { name, exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name, exact: true })).toBeVisible()
-    await expect(page.getByRole('region', { name: region, exact: true }).getByRole('heading', { name: heading, exact: true })).toBeVisible()
+    await expect(
+      page
+        .getByRole('region', { name: region, exact: true })
+        .getByRole('heading', { name: heading, exact: true }),
+    ).toBeVisible()
     for (const [, other] of screens) {
-      if (other !== region) await expect(page.getByRole('region', { name: other, exact: true })).toHaveCount(0)
+      if (other !== region)
+        await expect(page.getByRole('region', { name: other, exact: true })).toHaveCount(0)
     }
   }
   const portfolio = page.getByRole('region', { name: 'Lederoversikt' })
@@ -70,39 +89,53 @@ test('projects, follow-ups and reports switch independently and portfolio tiles 
   await expect(page.getByRole('dialog', { name: 'Havblikk Studio' })).toContainText('Partnerandel')
 })
 
-test('a report opens the selected customer and returns to the filtered records', async ({ page }) => {
+test('a report opens the selected customer and returns to the filtered records', async ({
+  page,
+}) => {
   await page.goto('/')
-  await page.getByRole('button', {name:'Åpne demonstrasjon'}).click()
-  const menu = page.getByRole('button', {name:'Åpne meny'})
+  await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
+  const menu = page.getByRole('button', { name: 'Åpne meny' })
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button', {name:'Rapporter'}).click()
-  const portfolio = page.getByRole('region', {name:'Lederoversikt'})
-  await portfolio.getByLabel('Team', {exact:true}).selectOption('Demoteam')
-  await portfolio.getByRole('button',{name:'Leads 5'}).click()
-  await page.getByRole('dialog').getByRole('button',{name:/Løkka Kaffebrenneri/}).click()
-  const profile = page.getByRole('region',{name:'Kundeprofil'})
-  await expect(profile.getByRole('heading',{name:'Løkka Kaffebrenneri'})).toBeVisible()
+  await page.getByRole('navigation').getByRole('button', { name: 'Rapporter' }).click()
+  const portfolio = page.getByRole('region', { name: 'Lederoversikt' })
+  await portfolio.getByLabel('Team', { exact: true }).selectOption('Demoteam')
+  await portfolio.getByRole('button', { name: 'Leads 5' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Løkka Kaffebrenneri/ })
+    .click()
+  const profile = page.getByRole('region', { name: 'Kundeprofil' })
+  await expect(profile.getByRole('heading', { name: 'Løkka Kaffebrenneri' })).toBeVisible()
   await expect(profile).toContainText('Sara Holm')
-  await page.getByRole('button',{name:'Tilbake til rapporten',exact:false}).click()
+  await page.getByRole('button', { name: 'Tilbake til rapporten', exact: false }).click()
   await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(5)
-  await page.getByRole('button',{name:'Lukk',exact:true}).click()
-  await portfolio.getByRole('button',{name:'Kjøpende kunder 1'}).click()
-  await page.getByRole('dialog').getByRole('button',{name:/Havblikk Studio/}).click()
-  await expect(profile.getByRole('heading',{name:'Havblikk Studio'})).toBeVisible()
-  await expect(profile.getByRole('heading',{name:'Salg',exact:true})).toBeFocused()
-  await profile.locator('summary').filter({ hasText:'Til godkjenning' }).click()
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
+  await portfolio.getByRole('button', { name: 'Kjøpende kunder 1' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Havblikk Studio/ })
+    .click()
+  await expect(profile.getByRole('heading', { name: 'Havblikk Studio' })).toBeVisible()
+  await expect(profile.getByRole('heading', { name: 'Salg', exact: true })).toBeFocused()
+  await profile.locator('summary').filter({ hasText: 'Til godkjenning' }).click()
   await expect(profile.getByText('Selgerandel')).toBeVisible()
-  await page.getByRole('button',{name:'Tilbake til rapporten',exact:false}).click()
-  await page.getByRole('button',{name:'Lukk',exact:true}).click()
-  await portfolio.getByRole('button',{name:'Registrerte møter 1'}).click()
-  await page.getByRole('dialog').getByRole('button',{name:/Vest Byggpartner/}).click()
+  await page.getByRole('button', { name: 'Tilbake til rapporten', exact: false }).click()
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
+  await portfolio.getByRole('button', { name: 'Registrerte møter 1' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Vest Byggpartner/ })
+    .click()
   await expect(page.getByRole('dialog')).toContainText('Ny nettside og flere henvendelser')
-  await page.getByRole('button',{name:'Tilbake til listen'}).click()
-  await expect(page.getByRole('dialog',{name:'Registrerte møter'})).toBeVisible()
-  await page.getByRole('button',{name:'Lukk',exact:true}).click()
-  await page.getByRole('button',{name:'Prosjektanalyse',exact:true}).click()
-  await page.getByRole('button',{name:'Vis leads: Solgt'}).click()
+  await page.getByRole('button', { name: 'Tilbake til listen' }).click()
+  await expect(page.getByRole('dialog', { name: 'Registrerte møter' })).toBeVisible()
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
+  await page.getByRole('button', { name: 'Prosjektanalyse', exact: true }).click()
+  await page.getByRole('button', { name: 'Vis leads: Solgt' }).click()
   await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(1)
-  await page.getByRole('dialog').getByRole('button',{name:/Havblikk Studio/}).click()
-  await expect(profile.getByRole('heading',{name:'Havblikk Studio'})).toBeVisible()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Havblikk Studio/ })
+    .click()
+  await expect(profile.getByRole('heading', { name: 'Havblikk Studio' })).toBeVisible()
 })

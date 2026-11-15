@@ -1,4 +1,5 @@
 """Manager delegation of project follow-ups."""
+
 from alembic import op
 
 revision = "0006"
@@ -46,4 +47,3 @@ def upgrade():
 
 def downgrade():
     raise RuntimeError("Bruk en gjennomgått fremoverrettet migrering for historiske oppgaver.")
-

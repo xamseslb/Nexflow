@@ -2,18 +2,24 @@ import { expect, test } from '@playwright/test'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test('complete walkthrough follows the actual workspace menu from overview to reports', async ({ page }) => {
+test('complete walkthrough follows the actual workspace menu from overview to reports', async ({
+  page,
+}) => {
   test.setTimeout(120_000)
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   await page.getByRole('button', { name: 'Start omvisning', exact: true }).click()
   const tour = page.getByRole('dialog', { name: 'Omvisning i Nexflow' })
   const pages = [
-    ['Oversikt', 'Les leadstatusen'], ['Ringeliste', 'Bytt mellom tavle og liste'],
-    ['Ringekøer', 'Velg type ringekø'], ['Kunder', 'Se et ekte bedriftsoppslag'],
+    ['Oversikt', 'Les leadstatusen'],
+    ['Ringeliste', 'Bytt mellom tavle og liste'],
+    ['Ringekøer', 'Velg type ringekø'],
+    ['Kunder', 'Se et ekte bedriftsoppslag'],
     ['Finn bedrifter', 'Velg hvem systemet skal finne'],
-    ['Møter', 'Book et møte'], ['Salg og opptjening', 'Registrer et salg'],
-    ['Prosjekter', 'Les prosjektkortet'], ['Oppfølging', 'Sett fristen'],
+    ['Møter', 'Book et møte'],
+    ['Salg og opptjening', 'Registrer et salg'],
+    ['Prosjekter', 'Les prosjektkortet'],
+    ['Oppfølging', 'Sett fristen'],
     ['Rapporter', 'Se utviklingen over tid'],
   ]
   async function chooseDestination(name: string) {
@@ -26,7 +32,9 @@ test('complete walkthrough follows the actual workspace menu from overview to re
     await expect(tour).toBeVisible()
   }
   for (const [i, [name, required]] of pages.entries()) {
-    await expect(tour.locator('header')).toContainText('Side ' + (i + 1) + ' av ' + pages.length + ' · ' + name)
+    await expect(tour.locator('header')).toContainText(
+      'Side ' + (i + 1) + ' av ' + pages.length + ' · ' + name,
+    )
     const titles = []
     while (true) {
       titles.push(await tour.locator('h2').innerText())
@@ -70,7 +78,10 @@ test('first visit, skip, return and replay the guide for the current page', asyn
   await expect(tour).toHaveCount(0)
   const menu = page.getByRole('button', { name: 'Åpne meny' })
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button', { name: 'Ringeliste', exact: true }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: 'Ringeliste', exact: true })
+    .click()
   const help = page.getByRole('button', { name: 'Vis informasjon' })
   await help.click()
   await page.getByRole('button', { name: 'Vis omvisning på denne siden' }).click()

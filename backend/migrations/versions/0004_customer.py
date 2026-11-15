@@ -1,4 +1,5 @@
 """Prosjektisolert kvalitetsgjennomgang og salgsfremdrift på kundeprofilen."""
+
 from alembic import op
 
 revision = "0004"

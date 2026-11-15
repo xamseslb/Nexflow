@@ -3,8 +3,8 @@
 ## Obligatorisk stack
 
 React, TypeScript, Vite, Tailwind CSS, shadcn/ui og PWA. Python, FastAPI,
-Pydantic, SQLAlchemy og Alembic. Supabase PostgreSQL, Auth, RLS og senere private
-Storage-bøtter. Realtime innføres bare der det gir dokumentert nytte. Pytest,
+Pydantic, SQLAlchemy og Alembic. Supabase PostgreSQL, Auth, RLS og privat
+Storage-bøtte for salgsdokumenter. Realtime innføres bare der det gir dokumentert nytte. Pytest,
 Playwright og Docker. REA er kun et utviklingsverktøy for autorisert research.
 Java-dashboardet er ikke modifisert; integrasjonen venter på dokumentasjon.
 
@@ -24,7 +24,7 @@ Java-dashboardet er ikke modifisert; integrasjonen venter på dokumentasjon.
 - Partnerbrukere har lesetilgang til prosjektets leads/møter, men ikke interne
   salgsfordelinger. Partnerens økonomirapport er fortsatt en egen leveranse.
 - Sammenkoblede nøkler avviser krysskobling av partner, prosjekt, lead og produkt.
-- Arbeideren har kun jobb- og B2B-berikelsesprivilegier. Den kan ikke endre
+- Arbeiderrollen kan behandle jobber, berike B2B-kort og opprette leads gjennom aktivert bedriftssøk. Den kan ikke endre
   økonomi, samtykke, medlemskap eller autentisering.
 
 ## Atomicitet
@@ -64,8 +64,9 @@ ble besvart. Den faktiske samtalen registreres av brukeren.
 ## Eksterne tjenester og videre arbeid
 
 Brreg Enhetsregisteret har en implementert klient med feltliste og kontrakttest.
-Regnskapsregister, AI-oppsummering, Reservasjonsregisteret, SMS/e-post,
-webhooks, private filer og CRM-adaptere er ikke aktivert. B2C feiler lukket uten
+Bedriftsoppslaget henter også regnskap, lederroller og tekst fra registrerte nettsteder.
+Salgsdokumenter bruker en privat Storage-bøtte. Eksterne leverandører for
+reservasjonssjekk, SMS/e-post og CRM-synk krever egne integrasjoner. B2C feiler lukket uten
 registerdokumentasjon eller gyldig samtykke. En faktisk skriftlig akseptflyt må
 implementeres før B2C kan gå videre fra «venter bekreftelse».
 

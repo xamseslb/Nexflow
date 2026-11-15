@@ -1,19 +1,29 @@
 """Queue/RLS integration tests. Each case uses an isolated project fixture."""
+
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
 from uuid import uuid4
 
 import pytest
+from db_helpers import as_user
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.api import authorize_call, complete_call, release, reserve
-from app.call_lists import (ListAssignment, ListCreate, ListLeads, assign_list, create_list,
-                            list_leads, lists, move_leads, next_contact)
+from app.call_lists import (
+    ListAssignment,
+    ListCreate,
+    ListLeads,
+    assign_list,
+    create_list,
+    list_leads,
+    lists,
+    move_leads,
+    next_contact,
+)
+from app.calls import authorize_call, complete_call, release, reserve
 from app.models import Lead, Membership, RegistryCheck
 from app.schemas import CallResult
-from test_postgres import as_user, tenant_data
 
 pytestmark = pytest.mark.postgres
 
@@ -26,8 +36,12 @@ def calling(tenant_data):
     with Session(engine) as db, db.begin():
         db.get(Membership, (pid, manager)).role = "leader"
     with as_user(engine, manager) as db:
-        cold = create_list(pid, ListCreate(name="Nykunder", category="cold", assignee_id=seller), db)["id"]
-        hot = create_list(pid, ListCreate(name="Innkommende", category="hot", assignee_id=manager), db)["id"]
+        cold = create_list(
+            pid, ListCreate(name="Nykunder", category="cold", assignee_id=seller), db
+        )["id"]
+        hot = create_list(
+            pid, ListCreate(name="Innkommende", category="hot", assignee_id=manager), db
+        )["id"]
         move_leads(pid, cold, ListLeads(lead_ids=[lead_id]), db)
     return engine, pid, partners[0], manager, seller, cold, hot, lead_id
 
@@ -70,7 +84,11 @@ def test_next_retry_completion_and_callback(calling):
         assert next_contact(pid, cold, db)["lead"]["id"] == lead_id
         call = authorize_call(pid, lead_id, db)
         assert authorize_call(pid, lead_id, db)["id"] == call["id"]
-    result = CallResult(outcome="callback", callback_at=datetime.now(timezone.utc) + timedelta(days=2), note="Ring fredag")
+    result = CallResult(
+        outcome="callback",
+        callback_at=datetime.now(timezone.utc) + timedelta(days=2),
+        note="Ring fredag",
+    )
     with as_user(engine, seller) as db:
         complete_call(pid, call["id"], result, db)
     with as_user(engine, seller) as db:
@@ -95,13 +113,24 @@ def test_next_checks_b2c_and_reopens_explicit_winback(calling):
         lead.status = "declined"
         lead.kind = "b2c"
     with as_user(engine, manager) as db:
-        winback = create_list(pid, ListCreate(name="Tidligere kunder", category="winback", assignee_id=seller), db)["id"]
+        winback = create_list(
+            pid, ListCreate(name="Tidligere kunder", category="winback", assignee_id=seller), db
+        )["id"]
         move_leads(pid, winback, ListLeads(lead_ids=[lead_id]), db)
     with as_user(engine, seller) as db:
         assert next_contact(pid, winback, db)["lead"] is None
     with Session(engine) as db, db.begin():
-        db.add(RegistryCheck(lead_id=lead_id, partner_id=partner, project_id=pid, phone="+4799999999",
-                             checked_at=datetime.now(timezone.utc), reserved=False, source="test"))
+        db.add(
+            RegistryCheck(
+                lead_id=lead_id,
+                partner_id=partner,
+                project_id=pid,
+                phone="+4799999999",
+                checked_at=datetime.now(timezone.utc),
+                reserved=False,
+                source="test",
+            )
+        )
     with as_user(engine, seller) as db:
         assert next_contact(pid, winback, db)["lead"]["id"] == lead_id
         release(pid, lead_id, db)
@@ -127,9 +156,9 @@ def test_queue_concurrent_operators_cannot_claim_same_lead(calling):
     assert results.count(None) == 1
 
 
-
 def test_assigned_contact_handover_includes_notes_and_hides_previous_owner(tenant_data):
-    from app.api import call_history, meetings
+    from app.booking import meetings
+    from app.calls import call_history
     from app.models import Meeting
 
     engine, users, partners, projects, lead_id = tenant_data
@@ -139,16 +168,30 @@ def test_assigned_contact_handover_includes_notes_and_hides_previous_owner(tenan
         db.get(Membership, (pid, manager)).role = "leader"
         db.add(Membership(project_id=pid, user_id=second, role="seller", active=True))
     with as_user(engine, manager) as db:
-        q = create_list(pid, ListCreate(name="Overføring", category="hot", assignee_id=first), db)["id"]
+        q = create_list(pid, ListCreate(name="Overføring", category="hot", assignee_id=first), db)[
+            "id"
+        ]
         move_leads(pid, q, ListLeads(lead_ids=[lead_id]), db)
     with as_user(engine, first) as db:
         call = authorize_call(pid, lead_id, db)
-        complete_call(pid, call["id"], CallResult(outcome="answered", note="Avtal oppfølging i mai"), db)
+        complete_call(
+            pid, call["id"], CallResult(outcome="answered", note="Avtal oppfølging i mai"), db
+        )
     with Session(engine) as db, db.begin():
         starts = datetime.now(timezone.utc) + timedelta(days=1)
-        db.add(Meeting(project_id=pid, partner_id=partners[0], lead_id=lead_id,
-                       starts_at=starts, ends_at=starts + timedelta(hours=1), booker_id=manager,
-                       closer_id=manager, outcome="booked", qualification={"behov": "Skjermet"}))
+        db.add(
+            Meeting(
+                project_id=pid,
+                partner_id=partners[0],
+                lead_id=lead_id,
+                starts_at=starts,
+                ends_at=starts + timedelta(hours=1),
+                booker_id=manager,
+                closer_id=manager,
+                outcome="booked",
+                qualification={"behov": "Skjermet"},
+            )
+        )
     with as_user(engine, manager) as db:
         assign_list(pid, q, ListAssignment(assignee_id=second), db)
     with as_user(engine, second) as db:
@@ -168,8 +211,13 @@ def test_manager_delegates_only_accessible_tasks_and_can_reassign(calling):
     from app.workspace import create_follow_up, reassign_follow_up
 
     engine, pid, _, manager, seller, _, hot, lead_id = calling
-    body = FollowUpCreate(assignee_id=seller, lead_id=lead_id, title="Sjekk tilbud",
-                          due_at=datetime.now(timezone.utc) + timedelta(days=1), idempotency_key=uuid4())
+    body = FollowUpCreate(
+        assignee_id=seller,
+        lead_id=lead_id,
+        title="Sjekk tilbud",
+        due_at=datetime.now(timezone.utc) + timedelta(days=1),
+        idempotency_key=uuid4(),
+    )
     with as_user(engine, manager) as db:
         task = create_follow_up(pid, body, db)
         assert task["assignee_id"] == seller
@@ -180,7 +228,9 @@ def test_manager_delegates_only_accessible_tasks_and_can_reassign(calling):
         assert exc.value.status_code == 403
     with as_user(engine, manager) as db:
         reassign_follow_up(pid, task["id"], FollowUpAssignment(assignee_id=manager), db)
-        assert create_follow_up(pid, body, db)["id"] == task["id"]  # original retry after reassignment
+        assert (
+            create_follow_up(pid, body, db)["id"] == task["id"]
+        )  # original retry after reassignment
         move_leads(pid, hot, ListLeads(lead_ids=[lead_id]), db)
     with as_user(engine, seller) as db:
         assert db.get(FollowUp, task["id"]) is None
@@ -190,7 +240,7 @@ def test_manager_delegates_only_accessible_tasks_and_can_reassign(calling):
 
 
 def test_abandoned_call_is_not_reused_after_restart(calling):
-    from app.api import call_history
+    from app.calls import call_history
 
     engine, pid, _, _, seller, cold, _, lead_id = calling
     with as_user(engine, seller) as db:

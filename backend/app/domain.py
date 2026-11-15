@@ -9,10 +9,19 @@ class Eligibility:
     reason: str
 
 
-def can_call(*, active: bool, blocked: bool, kind: str, reserved_by: UUID | None,
-             reserved_until: datetime | None, user_id: UUID, now: datetime,
-             checked_at: datetime | None = None, registry_reserved: bool | None = None,
-             consent_valid: bool = False) -> Eligibility:
+def can_call(
+    *,
+    active: bool,
+    blocked: bool,
+    kind: str,
+    reserved_by: UUID | None,
+    reserved_until: datetime | None,
+    user_id: UUID,
+    now: datetime,
+    checked_at: datetime | None = None,
+    registry_reserved: bool | None = None,
+    consent_valid: bool = False,
+) -> Eligibility:
     if not active:
         return Eligibility(False, "Prosjektet er pauset")
     if blocked:
@@ -42,6 +51,10 @@ def can_approve(kind: str, confirmed_at: datetime | None) -> bool:
     return kind == "b2b" or (kind == "b2c" and confirmed_at is not None)
 
 
-def payout_eligible(status: str, kind: str, withdrawal_ends_at: datetime | None, now: datetime) -> bool:
-    return status == "approved" and (kind == "b2b" or (
-        kind == "b2c" and withdrawal_ends_at is not None and withdrawal_ends_at <= now))
+def payout_eligible(
+    status: str, kind: str, withdrawal_ends_at: datetime | None, now: datetime
+) -> bool:
+    return status == "approved" and (
+        kind == "b2b"
+        or (kind == "b2c" and withdrawal_ends_at is not None and withdrawal_ends_at <= now)
+    )

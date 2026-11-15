@@ -1,12 +1,13 @@
 """Exercise the normal FastAPI routes with two identities and real PostgreSQL RLS."""
+
 import pytest
+from db_helpers import as_user
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.db import session
 from app.main import app
 from app.models import Membership
-from test_postgres import as_user, tenant_data
 
 pytestmark = pytest.mark.postgres
 
@@ -28,7 +29,10 @@ def test_manager_assigns_then_seller_logs_and_advances(tenant_data):
     try:
         client = TestClient(app)
         root = f"/api/v1/projects/{project}"
-        response = client.post(f"{root}/call-lists", json={"name": "Prioriterte", "category": "hot", "assignee_id": str(seller)})
+        response = client.post(
+            f"{root}/call-lists",
+            json={"name": "Prioriterte", "category": "hot", "assignee_id": str(seller)},
+        )
         assert response.status_code == 201
         queue = f"{root}/call-lists/{response.json()['id']}"
         assert client.post(queue + "/leads", json={"lead_ids": [str(lead_id)]}).is_success
@@ -44,7 +48,8 @@ def test_manager_assigns_then_seller_logs_and_advances(tenant_data):
         assert client.patch(path, json=outcome).is_success
         assert client.patch(path, json=outcome).is_success
         assert client.post(queue + "/next").json()["lead"] is None
-        assert client.get(f"{root}/customers/{lead_id}").json()["calls"][0]["note"] == outcome["note"]
+        assert (
+            client.get(f"{root}/customers/{lead_id}").json()["calls"][0]["note"] == outcome["note"]
+        )
     finally:
         app.dependency_overrides.pop(session)
-

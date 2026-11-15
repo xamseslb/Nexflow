@@ -11,7 +11,9 @@ test.beforeEach(async ({ page }) => {
   await navigate(page, 'Ringekøer')
 })
 
-test('manager creates and assigns list, moves contacts and progresses after saved outcome', async ({ page }) => {
+test('manager creates and assigns list, moves contacts and progresses after saved outcome', async ({
+  page,
+}) => {
   await page.getByRole('button', { name: 'Ny ringeliste' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Listenavn').fill('Oppfølging november')
@@ -41,10 +43,14 @@ test('manager creates and assigns list, moves contacts and progresses after save
   await page.getByRole('button', { name: 'Administrer Oppfølging november' }).click()
   await dialog.getByLabel('Ansvarlig selger').selectOption('demo-seller')
   await dialog.getByRole('button', { name: 'Lagre tildeling' }).click()
-  await expect(page.getByRole('article').filter({ hasText: 'Oppfølging november' })).toContainText('Alex')
+  await expect(page.getByRole('article').filter({ hasText: 'Oppfølging november' })).toContainText(
+    'Alex',
+  )
 })
 
-test('future callbacks and blocked contacts stay out of queue, project switch resets demo', async ({ page }) => {
+test('future callbacks and blocked contacts stay out of queue, project switch resets demo', async ({
+  page,
+}) => {
   await page.getByRole('button', { name: 'Cold', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await page.getByRole('button', { name: 'Åpne Nye bedriftskontakter' }).click()
@@ -67,20 +73,26 @@ test('future callbacks and blocked contacts stay out of queue, project switch re
 })
 
 for (const kind of ['Salg', 'Møte'] as const) {
-  test(`saved ${kind} outcome opens the form for the previous contact and resumes queue`, async ({ page }) => {
+  test(`saved ${kind} outcome opens the form for the previous contact and resumes queue`, async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'Åpne Interesserte bedrifter' }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: 'Simuler oppringing' }).click()
     await dialog.getByRole('button', { name: kind, exact: true }).click()
     await dialog.getByRole('button', { name: 'Lagre og vis neste kontakt' }).click()
     await expect(dialog.getByRole('heading', { name: 'Nordlys Elektro' })).toBeVisible()
-    await dialog.getByRole('button', { name: kind === 'Salg' ? 'Registrer salg' : 'Book møte', exact: true }).click()
+    await dialog
+      .getByRole('button', { name: kind === 'Salg' ? 'Registrer salg' : 'Book møte', exact: true })
+      .click()
     await expect(dialog).toContainText('Fjord & Form')
-    if (kind === 'Salg') await dialog.getByRole('button', { name: 'Registrer og send til godkjenning' }).click()
+    if (kind === 'Salg')
+      await dialog.getByRole('button', { name: 'Registrer og send til godkjenning' }).click()
     else {
       await dialog.getByLabel('Tidspunkt').fill('2099-11-23T11:00')
       await dialog.getByLabel('Closer').selectOption({ index: 1 })
-      for (const label of ['Behov', 'Budsjett', 'Beslutningstaker', 'Tidslinje']) await dialog.getByLabel(label).fill('Avklart')
+      for (const label of ['Behov', 'Budsjett', 'Beslutningstaker', 'Tidslinje'])
+        await dialog.getByLabel(label).fill('Avklart')
       await dialog.getByRole('button', { name: 'Registrer møte' }).click()
     }
     await expect(dialog.getByRole('heading', { name: 'Nordlys Elektro' })).toBeVisible()

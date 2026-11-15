@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-test('login is accessible, password visibility works and credentials stay local', async ({ page }, testInfo) => {
+test('login is accessible, password visibility works and credentials stay local', async ({
+  page,
+}, testInfo) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Logg inn' })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true })
@@ -26,18 +28,37 @@ test('all workspace pages remain usable across navigation', async ({ page }, tes
   await page.goto('/')
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
   const reactErrors: string[] = []
-  page.on('pageerror', error => reactErrors.push(error.message))
-  page.on('console', message => { if (message.type() === 'error') reactErrors.push(message.text()) })
-  for (const name of ['Møter', 'Salg og opptjening', 'Prosjekter', 'Ringeliste', 'Ringekøer', 'Kunder', 'Oppfølging', 'Rapporter', 'Oversikt']) {
+  page.on('pageerror', (error) => reactErrors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error') reactErrors.push(message.text())
+  })
+  for (const name of [
+    'Møter',
+    'Salg og opptjening',
+    'Prosjekter',
+    'Ringeliste',
+    'Ringekøer',
+    'Kunder',
+    'Oppfølging',
+    'Rapporter',
+    'Oversikt',
+  ]) {
     const menu = page.getByRole('button', { name: 'Åpne meny' })
     if (await menu.isVisible()) await menu.click()
-    await page.locator('nav').getByRole('button', { name: new RegExp(name) }).click()
+    await page
+      .locator('nav')
+      .getByRole('button', { name: new RegExp(name) })
+      .click()
     await expect(page.locator('nav [aria-current="page"]')).toContainText(name)
     await expect(page.locator('main h1')).toHaveText(name)
-    await expect(page.getByRole('heading',{name:'Lederoversikt'})).toHaveCount(name === 'Rapporter' ? 1 : 0)
+    await expect(page.getByRole('heading', { name: 'Lederoversikt' })).toHaveCount(
+      name === 'Rapporter' ? 1 : 0,
+    )
     if (name === 'Oversikt') await expect(page.locator('.daybook')).toBeVisible()
     expect(reactErrors).toEqual([])
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBeTruthy()
     await page.screenshot({ path: testInfo.outputPath(`workspace-${name}.png`), fullPage: true })
   }
 })

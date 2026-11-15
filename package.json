@@ -1,10 +1,17 @@
 {
   "name": "hub-crm",
   "private": true,
-  "workspaces": ["frontend"],
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
-    "test:e2e": "npm run test:e2e --workspace frontend"
+    "test:e2e": "npm run test:e2e --workspace frontend",
+    "format:frontend": "prettier --write \"frontend/src/**/*.{ts,tsx,css}\" \"frontend/tests/**/*.ts\" \"frontend/*.ts\" \"frontend/scripts/*.mjs\" \"frontend/index.html\"",
+    "check:format:frontend": "prettier --check \"frontend/src/**/*.{ts,tsx,css}\" \"frontend/tests/**/*.ts\" \"frontend/*.ts\" \"frontend/scripts/*.mjs\" \"frontend/index.html\""
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
   }
 }

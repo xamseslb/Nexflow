@@ -2,13 +2,13 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
+from db_helpers import as_user
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.meeting_workflow import MeetingResult, record_meeting_result
 from app.models import CallList, Lead, Meeting, Membership
-from test_postgres import as_user, tenant_data
 
 
 def test_meeting_outcomes_are_a_closed_vocabulary():
@@ -24,15 +24,32 @@ def test_closer_scope_time_sale_and_duplicate_meeting_outcomes(tenant_data):
     with Session(engine) as db, db.begin():
         db.get(Membership, (pid, users[0])).role = "closer"
         db.get(Membership, (pid, users[1])).role = "leader"
-        queue = CallList(project_id=pid, partner_id=partners[0], assignee_id=users[1], name="Booked leads", category="hot")
+        queue = CallList(
+            project_id=pid,
+            partner_id=partners[0],
+            assignee_id=users[1],
+            name="Booked leads",
+            category="hot",
+        )
         db.add(queue)
         db.flush()
         db.get(Lead, lead_id).call_list_id = queue.id
-        for meeting_id, offset in ((mid,-2),(future,2)):
+        for meeting_id, offset in ((mid, -2), (future, 2)):
             starts = now + timedelta(days=offset)
-            db.add(Meeting(id=meeting_id, project_id=pid, partner_id=partners[0], lead_id=lead_id,
-                           booker_id=users[1], closer_id=users[0], starts_at=starts,
-                           ends_at=starts + timedelta(minutes=30), outcome="booked", qualification={}))
+            db.add(
+                Meeting(
+                    id=meeting_id,
+                    project_id=pid,
+                    partner_id=partners[0],
+                    lead_id=lead_id,
+                    booker_id=users[1],
+                    closer_id=users[0],
+                    starts_at=starts,
+                    ends_at=starts + timedelta(minutes=30),
+                    outcome="booked",
+                    qualification={},
+                )
+            )
     with as_user(engine, users[1]) as db, pytest.raises(HTTPException) as denied:
         record_meeting_result(pid, mid, MeetingResult(outcome="qualified"), db)
     assert denied.value.status_code == 404
@@ -44,9 +61,13 @@ def test_closer_scope_time_sale_and_duplicate_meeting_outcomes(tenant_data):
     assert fake_sale.value.status_code == 409
     with as_user(engine, users[0]) as db:
         change = MeetingResult(outcome="offer_sent")
-        assert record_meeting_result(pid, mid, change, db) == record_meeting_result(pid, mid, change, db)
+        assert record_meeting_result(pid, mid, change, db) == record_meeting_result(
+            pid, mid, change, db
+        )
     with as_user(engine, users[0]) as db:
-        assert db.get(Lead, lead_id) is None  # The meeting must not grant access to the customer list.
+        assert (
+            db.get(Lead, lead_id) is None
+        )  # The meeting must not grant access to the customer list.
         assert db.get(Meeting, mid).outcome == "offer_sent"
         with pytest.raises(HTTPException) as finalized:
             record_meeting_result(pid, mid, MeetingResult(outcome="qualified"), db)

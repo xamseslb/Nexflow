@@ -1,4 +1,5 @@
 """Scoped company discovery, daily quota and review gate."""
+
 from pathlib import Path
 from alembic import op
 

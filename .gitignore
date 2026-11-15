@@ -15,4 +15,4 @@ test-results/
 .tmp/
 *.egg-info/
 *.tsbuildinfo
-
+.ruff_cache/

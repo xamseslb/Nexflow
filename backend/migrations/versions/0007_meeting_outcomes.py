@@ -1,4 +1,5 @@
 """Permit an assigned closer to work on the appointment without opening another seller's ring list."""
+
 from alembic import op
 
 revision = "0007"

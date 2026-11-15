@@ -1,15 +1,24 @@
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
+
 import pytest
-from app.domain import allocate, can_call, can_approve, payout_eligible
+
+from app.domain import allocate, can_approve, can_call, payout_eligible
 
 NOW = datetime(2026, 10, 31, 12, tzinfo=timezone.utc)
 USER = uuid4()
 
 
 def check(**overrides):
-    values = dict(active=True, blocked=False, kind="b2b", reserved_by=None,
-                  reserved_until=None, user_id=USER, now=NOW)
+    values = dict(
+        active=True,
+        blocked=False,
+        kind="b2b",
+        reserved_by=None,
+        reserved_until=None,
+        user_id=USER,
+        now=NOW,
+    )
     return can_call(**(values | overrides))
 
 
@@ -17,16 +26,21 @@ def test_b2b_without_private_enrichment():
     assert check().allowed
 
 
-@pytest.mark.parametrize("changes", [
-    {"active": False}, {"blocked": True}, {"kind": "unknown"},
-    {"reserved_by": uuid4(), "reserved_until": NOW + timedelta(seconds=1)},
-    {"kind": "b2c"},
-    {"kind": "b2c", "checked_at": NOW - timedelta(days=30), "registry_reserved": False},
-    {"kind": "b2c", "checked_at": NOW + timedelta(seconds=1), "registry_reserved": False},
-    {"kind": "b2c", "checked_at": NOW, "registry_reserved": True},
-    {"kind": "b2c", "checked_at": NOW, "registry_reserved": None},
-    {"kind": "b2c", "blocked": True, "consent_valid": True},
-])
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"active": False},
+        {"blocked": True},
+        {"kind": "unknown"},
+        {"reserved_by": uuid4(), "reserved_until": NOW + timedelta(seconds=1)},
+        {"kind": "b2c"},
+        {"kind": "b2c", "checked_at": NOW - timedelta(days=30), "registry_reserved": False},
+        {"kind": "b2c", "checked_at": NOW + timedelta(seconds=1), "registry_reserved": False},
+        {"kind": "b2c", "checked_at": NOW, "registry_reserved": True},
+        {"kind": "b2c", "checked_at": NOW, "registry_reserved": None},
+        {"kind": "b2c", "blocked": True, "consent_valid": True},
+    ],
+)
 def test_calling_fails_closed(changes):
     assert not check(**changes).allowed
 

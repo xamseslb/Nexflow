@@ -1,11 +1,20 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-const assets = (await readdir('dist/assets')).map(name => `/assets/${name}`)
-const paths = ['/index.html', '/icon.svg', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest', ...assets]
+const assets = (await readdir('dist/assets')).map((name) => `/assets/${name}`)
+const paths = [
+  '/index.html',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.webmanifest',
+  ...assets,
+]
 const hash = createHash('sha256')
 for (const path of paths) hash.update(await readFile(`dist${path}`))
 const cache = `hub-static-${hash.digest('hex').slice(0, 16)}`
-await writeFile('dist/sw.js', `
+await writeFile(
+  'dist/sw.js',
+  `
 const CACHE = ${JSON.stringify(cache)};
 const STATIC = ${JSON.stringify(paths)};
 self.addEventListener('install', event => {
@@ -24,5 +33,6 @@ self.addEventListener('fetch', event => {
     event.respondWith(caches.open(CACHE).then(cache => cache.match(url.pathname)).then(cached => cached || fetch(event.request)));
   }
 });
-`)
+`,
+)
 console.log(`PWA: ${paths.length} static files, no API caching (${cache})`)

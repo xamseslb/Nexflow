@@ -1,4 +1,5 @@
 """Named calling queues with project and salesperson isolation."""
+
 from alembic import op
 
 revision = "0003"
@@ -59,4 +60,3 @@ def upgrade():
 
 def downgrade():
     raise RuntimeError("Use a reviewed forward migration to preserve list assignments and history")
-

@@ -17,13 +17,16 @@ test('lead search, simulated call and two-tap outcome', async ({ page }) => {
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.getByRole('button', { name: /Fjord & Form/ }).click()
   await expect(page.getByRole('dialog')).toContainText('Avtal prisgjennomgang torsdag')
-  await page.getByRole('button',{name:'Lukk',exact:true}).click()
-  const menu = page.getByRole('button',{name:'Åpne meny'})
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
+  const menu = page.getByRole('button', { name: 'Åpne meny' })
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button',{name:'Rapporter'}).click()
-  await page.getByRole('button',{name:'Fullførte samtaler 1'}).click()
-  await page.getByRole('dialog').getByRole('button',{name:/Fjord & Form/}).click()
-  const call = page.getByRole('dialog',{name:'Fjord & Form'})
+  await page.getByRole('navigation').getByRole('button', { name: 'Rapporter' }).click()
+  await page.getByRole('button', { name: 'Fullførte samtaler 1' }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /Fjord & Form/ })
+    .click()
+  const call = page.getByRole('dialog', { name: 'Fjord & Form' })
   await expect(call).toContainText('Avtal prisgjennomgang torsdag')
   await expect(call).toContainText('Svar')
 })
@@ -35,9 +38,14 @@ test('reserved B2C contact is blocked', async ({ page }) => {
   await expect(page.getByText('Reservert mot telefonsalg – mangler gyldig samtykke')).toBeVisible()
 })
 
-test('lead board groups contacts and list view preserves search and selection', async ({ page }, testInfo) => {
+test('lead board groups contacts and list view preserves search and selection', async ({
+  page,
+}, testInfo) => {
   await page.getByRole('button', { name: 'Se hele listen' }).click()
-  await expect(page.getByRole('button', { name: 'Tavle', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Tavle', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
   await expect(page.locator('.board-new')).toContainText('Fjord & Form')
   await expect(page.locator('.board-blocked')).toContainText('Eksempelkontakt')
   await page.screenshot({ path: testInfo.outputPath('lead-board.png') })
@@ -62,7 +70,9 @@ test('project switch clears previous partner data', async ({ page }) => {
 })
 
 test('layout fits viewport and dialog works on mobile', async ({ page }) => {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy()
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBeTruthy()
   await page.getByRole('button', { name: 'Nytt lead', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByLabel('Bedrift / navn').fill('Fiktiv testbedrift')
@@ -75,7 +85,9 @@ test('overview visual review', async ({ page }, testInfo) => {
   await page.screenshot({ path: testInfo.outputPath('overview.png'), fullPage: true })
 })
 
-test('console status shortcuts filter leads and menu navigation clears the filter', async ({ page }) => {
+test('console status shortcuts filter leads and menu navigation clears the filter', async ({
+  page,
+}) => {
   await page.getByRole('textbox', { name: 'Søk i leads' }).fill('Fjord')
   await page.getByRole('button', { name: 'Møte booket: 1 leads. Vis i ringelisten' }).click()
   await expect(page.getByRole('textbox', { name: 'Søk i leads' })).toHaveValue('')
@@ -88,6 +100,9 @@ test('console status shortcuts filter leads and menu navigation clears the filte
   await page.getByRole('navigation').getByRole('button', { name: 'Oversikt', exact: true }).click()
   await page.getByRole('button', { name: 'Solgt: 1 leads. Vis i ringelisten' }).click()
   if (await menu.isVisible()) await menu.click()
-  await page.getByRole('navigation').getByRole('button', { name: 'Ringeliste', exact: true }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: 'Ringeliste', exact: true })
+    .click()
   await expect(page.locator('.board-card')).toHaveCount(7)
 })

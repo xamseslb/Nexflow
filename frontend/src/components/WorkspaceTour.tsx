@@ -9,24 +9,45 @@ import './workspace-tour.css'
 
 type Page = { id: string; label: string }
 type TourProps = {
-  owner: string; view: string; pages: Page[]; ready: boolean; replay: boolean; full: boolean
-  menuOpen: boolean; closeMenu: () => void
+  owner: string
+  view: string
+  pages: Page[]
+  ready: boolean
+  replay: boolean
+  full: boolean
+  menuOpen: boolean
+  closeMenu: () => void
 }
 const seenThisSession = new Set<string>()
 
-export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpen, closeMenu }: TourProps) {
+export function WorkspaceTour({
+  owner,
+  view,
+  pages,
+  ready,
+  replay,
+  full,
+  menuOpen,
+  closeMenu,
+}: TourProps) {
   const key = 'nexflow:tour:v2:' + owner
   const [phase, setPhase] = useState<'checking' | 'offer' | 'running' | 'closed'>(() => {
     if (replay) return 'running'
     if (seenThisSession.has(key)) return 'closed'
-    try { if (localStorage.getItem(key)) return 'closed' } catch { /* Storage can be unavailable. */ }
+    try {
+      if (localStorage.getItem(key)) return 'closed'
+    } catch {
+      /* Storage can be unavailable. */
+    }
     return owner === 'demo' ? 'offer' : 'checking'
   })
   const [decided, setDecided] = useState(() => phase === 'closed')
   useEffect(() => {
     const auth = supabase?.auth
     if (!auth || owner === 'demo' || !owner) return
-    let cancelled = false, busy = false, done = false
+    let cancelled = false,
+      busy = false,
+      done = false
     let retry: ReturnType<typeof setTimeout>
     async function sync() {
       if (!auth || cancelled || busy || done || !navigator.onLine) return
@@ -34,25 +55,34 @@ export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpe
       clearTimeout(retry)
       try {
         // A restored session may predate a decision on another device.
-        const { data: { user }, error } = await auth.getUser()
+        const {
+          data: { user },
+          error,
+        } = await auth.getUser()
         if (error || !user) throw new Error('Account unavailable')
         if (cancelled || user.id !== owner) return
         if (user.user_metadata?.nexflow_tour_seen === true) {
           seenThisSession.add(key)
-          try { localStorage.setItem(key, 'seen') } catch { /* Optional offline cache. */ }
-          setPhase(current => current === 'running' ? current : 'closed')
+          try {
+            localStorage.setItem(key, 'seen')
+          } catch {
+            /* Optional offline cache. */
+          }
+          setPhase((current) => (current === 'running' ? current : 'closed'))
         } else if (decided) {
           // Also migrate choices saved by earlier versions on this browser.
           const { error: saveError } = await auth.updateUser({ data: { nexflow_tour_seen: true } })
           if (saveError) throw saveError
         } else {
-          setPhase(current => current === 'checking' ? 'offer' : current)
+          setPhase((current) => (current === 'checking' ? 'offer' : current))
           return
         }
         done = true
       } catch {
         if (!cancelled) retry = setTimeout(sync, 30_000)
-      } finally { busy = false }
+      } finally {
+        busy = false
+      }
     }
     void sync()
     window.addEventListener('online', sync)
@@ -65,12 +95,16 @@ export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpe
     }
   }, [decided, key, owner])
   const [chapter, setChapter] = useState({ id: full ? 'overview' : view, atEnd: false })
-  const position = pages.findIndex(page => page.id === chapter.id)
+  const position = pages.findIndex((page) => page.id === chapter.id)
   if (phase === 'closed' || phase === 'checking' || !ready || position < 0) return null
 
   function choose(next: 'running' | 'closed') {
     seenThisSession.add(key)
-    try { localStorage.setItem(key, 'seen') } catch { /* Remember the choice for the current session. */ }
+    try {
+      localStorage.setItem(key, 'seen')
+    } catch {
+      /* Remember the choice for the current session. */
+    }
     setDecided(true)
     setPhase(next)
   }
@@ -79,36 +113,76 @@ export function WorkspaceTour({ owner, view, pages, ready, replay, full, menuOpe
     if (menuOpen) closeMenu()
   }
 
-  if (phase === 'offer') return <Dialog open onOpenChange={open => { if (!open) finish() }}
-    title="Vil du ha en omvisning?" description="Se hvordan du bruker Nexflow, steg for steg. Du kan også starte omvisningen senere fra Hjelp.">
-    <div className="flex flex-wrap justify-end gap-2">
-      <Button variant="outline" onClick={finish}>Hopp over</Button>
-      <Button onClick={() => choose('running')}>Start omvisning</Button>
-    </div>
-  </Dialog>
+  if (phase === 'offer')
+    return (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) finish()
+        }}
+        title="Vil du ha en omvisning?"
+        description="Se hvordan du bruker Nexflow, steg for steg. Du kan også starte omvisningen senere fra Hjelp."
+      >
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={finish}>
+            Hopp over
+          </Button>
+          <Button onClick={() => choose('running')}>Start omvisning</Button>
+        </div>
+      </Dialog>
+    )
 
   if (view !== chapter.id) {
-    return <NavigationHint page={pages[position]} menuOpen={menuOpen} onSkip={finish} onBack={() => {
-      closeMenu()
-      setChapter({ id: view, atEnd: !chapter.atEnd })
-    }} />
+    return (
+      <NavigationHint
+        page={pages[position]}
+        menuOpen={menuOpen}
+        onSkip={finish}
+        onBack={() => {
+          closeMenu()
+          setChapter({ id: view, atEnd: !chapter.atEnd })
+        }}
+      />
+    )
   }
 
   const next = full ? pages[position + 1] : undefined
   const previous = full ? pages[position - 1] : undefined
-  return <ChapterTour key={chapter.id} page={pages[position]} full={full} next={next}
-    chapterLabel={full ? `Side ${position + 1} av ${pages.length} · ${pages[position].label}` : pages[position].label}
-    atEnd={chapter.atEnd} onFinish={finish}
-    onNextPage={next ? () => setChapter({ id: next.id, atEnd: false }) : undefined}
-    onPreviousPage={previous ? () => setChapter({ id: previous.id, atEnd: true }) : undefined} />
+  return (
+    <ChapterTour
+      key={chapter.id}
+      page={pages[position]}
+      full={full}
+      next={next}
+      chapterLabel={
+        full
+          ? `Side ${position + 1} av ${pages.length} · ${pages[position].label}`
+          : pages[position].label
+      }
+      atEnd={chapter.atEnd}
+      onFinish={finish}
+      onNextPage={next ? () => setChapter({ id: next.id, atEnd: false }) : undefined}
+      onPreviousPage={previous ? () => setChapter({ id: previous.id, atEnd: true }) : undefined}
+    />
+  )
 }
 
-function NavigationHint({ page, menuOpen, onSkip, onBack }: {
-  page: Page; menuOpen: boolean; onSkip: () => void; onBack: () => void
+function NavigationHint({
+  page,
+  menuOpen,
+  onSkip,
+  onBack,
+}: {
+  page: Page
+  menuOpen: boolean
+  onSkip: () => void
+  onBack: () => void
 }) {
   const [compact, setCompact] = useState(() => matchMedia('(max-width:1120px)').matches)
   const openMenuFirst = compact && !menuOpen
-  const slot = document.querySelector(openMenuFirst ? '#tour-menu-hint' : `[data-tour-slot="${page.id}"]`)
+  const slot = document.querySelector(
+    openMenuFirst ? '#tour-menu-hint' : `[data-tour-slot="${page.id}"]`,
+  )
   useEffect(() => {
     const media = matchMedia('(max-width:1120px)')
     const resize = () => setCompact(media.matches)
@@ -116,7 +190,9 @@ function NavigationHint({ page, menuOpen, onSkip, onBack }: {
     return () => media.removeEventListener('change', resize)
   }, [])
   useLayoutEffect(() => {
-    const button = document.querySelector<HTMLButtonElement>(openMenuFirst ? '.mobile-menu' : `[data-tour-page="${page.id}"]`)
+    const button = document.querySelector<HTMLButtonElement>(
+      openMenuFirst ? '.mobile-menu' : `[data-tour-page="${page.id}"]`,
+    )
     if (!button) return
     button.classList.add('tour-destination')
     button.setAttribute('aria-describedby', 'tour-direction')
@@ -132,34 +208,77 @@ function NavigationHint({ page, menuOpen, onSkip, onBack }: {
     }
   }, [page.id, openMenuFirst])
   if (!slot) return null
-  return createPortal(<aside className="tour-direction" aria-label="Neste side i omvisningen">
-    <div id="tour-direction" aria-live="polite"><strong>{openMenuFirst ? 'Åpne hovedmenyen' : 'Trykk på «' + page.label + '»'}</strong>
-      <p>{openMenuFirst ? 'Trykk på menyknappen og velg «' + page.label + '» for å fortsette omvisningen.' : 'Omvisningen fortsetter når du åpner siden i menyen.'}</p></div>
-    <div><button onClick={onBack}>Forrige</button><button onClick={onSkip}>Hopp over</button></div>
-  </aside>, slot)
+  return createPortal(
+    <aside className="tour-direction" aria-label="Neste side i omvisningen">
+      <div id="tour-direction" aria-live="polite">
+        <strong>{openMenuFirst ? 'Åpne hovedmenyen' : 'Trykk på «' + page.label + '»'}</strong>
+        <p>
+          {openMenuFirst
+            ? 'Trykk på menyknappen og velg «' + page.label + '» for å fortsette omvisningen.'
+            : 'Omvisningen fortsetter når du åpner siden i menyen.'}
+        </p>
+      </div>
+      <div>
+        <button onClick={onBack}>Forrige</button>
+        <button onClick={onSkip}>Hopp over</button>
+      </div>
+    </aside>,
+    slot,
+  )
 }
 
-function ChapterTour({ page, full, next, chapterLabel, atEnd, onFinish, onNextPage, onPreviousPage }: {
-  page: Page; full: boolean; next?: Page; chapterLabel: string; atEnd: boolean; onFinish: () => void
-  onNextPage?: () => void; onPreviousPage?: () => void
+function ChapterTour({
+  page,
+  full,
+  next,
+  chapterLabel,
+  atEnd,
+  onFinish,
+  onNextPage,
+  onPreviousPage,
+}: {
+  page: Page
+  full: boolean
+  next?: Page
+  chapterLabel: string
+  atEnd: boolean
+  onFinish: () => void
+  onNextPage?: () => void
+  onPreviousPage?: () => void
 }) {
-  const candidates = useMemo(() => pageSteps(page.id, page.label, full, !next), [page.id, page.label, full, next?.id])
+  const candidates = useMemo(
+    () => pageSteps(page.id, page.label, full, !next),
+    [page.id, page.label, full, next?.id],
+  )
   const [steps, setSteps] = useState<typeof candidates>([])
   const [cursor, setCursor] = useState<number>(atEnd ? Infinity : 0)
   useLayoutEffect(() => {
     function collect() {
-      const visible = candidates.filter(step => tourTarget(step.target))
-      setSteps(previous => previous.length === visible.length && previous.every((step, i) => step === visible[i]) ? previous : visible)
+      const visible = candidates.filter((step) => tourTarget(step.target))
+      setSteps((previous) =>
+        previous.length === visible.length && previous.every((step, i) => step === visible[i])
+          ? previous
+          : visible,
+      )
     }
     collect()
     // Customer rows, call lists and report totals can arrive after their page heading.
     const observer = new MutationObserver(collect)
     const main = document.querySelector('main')
-    if (main) observer.observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'disabled'] })
+    if (main)
+      observer.observe(main, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['hidden', 'disabled'],
+      })
     window.addEventListener('resize', collect)
-    return () => { observer.disconnect(); window.removeEventListener('resize', collect) }
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', collect)
+    }
   }, [candidates])
-  const nextIndex = steps.findIndex(step => candidates.indexOf(step) >= cursor)
+  const nextIndex = steps.findIndex((step) => candidates.indexOf(step) >= cursor)
   const index = nextIndex < 0 ? steps.length - 1 : nextIndex
   const current = steps[index]
   const dialog = useRef<HTMLDialogElement>(null)
@@ -176,7 +295,8 @@ function ChapterTour({ page, full, next, chapterLabel, atEnd, onFinish, onNextPa
     advance.current?.focus({ preventScroll: true })
     return () => {
       el.close()
-      if (before instanceof HTMLElement && before !== document.body && before.isConnected) before.focus({ preventScroll: true })
+      if (before instanceof HTMLElement && before !== document.body && before.isConnected)
+        before.focus({ preventScroll: true })
       else document.querySelector<HTMLElement>('[data-tour="help"]')?.focus({ preventScroll: true })
       window.scrollTo({ top: scrollY, behavior: 'instant' })
     }
@@ -184,22 +304,34 @@ function ChapterTour({ page, full, next, chapterLabel, atEnd, onFinish, onNextPa
 
   useLayoutEffect(() => {
     if (!current || !panel.current || !ring.current) return
-    const card = panel.current, marker = ring.current
+    const card = panel.current,
+      marker = ring.current
     const target = tourTarget(current.target)
     target?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
     function position() {
       const rect = tourTarget(current.target)?.getBoundingClientRect()
-      const w = document.documentElement.clientWidth, h = window.innerHeight, gap = 14
-      const cw = card.offsetWidth, ch = card.offsetHeight
-      let top = (h - ch) / 2, left = (w - cw) / 2
+      const w = document.documentElement.clientWidth,
+        h = window.innerHeight,
+        gap = 14
+      const cw = card.offsetWidth,
+        ch = card.offsetHeight
+      let top = (h - ch) / 2,
+        left = (w - cw) / 2
       marker.hidden = !rect
       if (rect) {
-        Object.assign(marker.style, { left: rect.left - 3 + 'px', top: rect.top - 3 + 'px', width: rect.width + 6 + 'px', height: rect.height + 6 + 'px' })
+        Object.assign(marker.style, {
+          left: rect.left - 3 + 'px',
+          top: rect.top - 3 + 'px',
+          width: rect.width + 6 + 'px',
+          height: rect.height + 6 + 'px',
+        })
         left = rect.left
         if (rect.bottom + gap + ch <= h - gap) top = rect.bottom + gap
         else if (rect.top - gap - ch >= gap) top = rect.top - gap - ch
-        else if (rect.right + cw + 2 * gap <= w) { left = rect.right + gap; top = rect.top }
-        else top = rect.top > h / 2 ? gap : h - ch - gap
+        else if (rect.right + cw + 2 * gap <= w) {
+          left = rect.right + gap
+          top = rect.top
+        } else top = rect.top > h / 2 ? gap : h - ch - gap
       }
       card.style.left = Math.max(gap, Math.min(w - cw - gap, left)) + 'px'
       card.style.top = Math.max(gap, Math.min(h - ch - gap, top)) + 'px'
@@ -228,18 +360,46 @@ function ChapterTour({ page, full, next, chapterLabel, atEnd, onFinish, onNextPa
     else if (onNextPage) onNextPage()
     else onFinish()
   }
-  return <dialog ref={dialog} className="workspace-tour" aria-label="Omvisning i Nexflow" aria-describedby="tour-description"
-    onCancel={event => { event.preventDefault(); onFinish() }}>
-    <div className="tour-ring" ref={ring} aria-hidden="true" />
-    <article ref={panel} className="tour-card">
-      <header><span>{chapterLabel}</span><span>Steg {index + 1} av {steps.length}</span></header>
-      <progress aria-label="Fremdrift på denne siden" value={index + 1} max={steps.length} />
-      <div aria-live="polite" aria-atomic="true"><h2>{current.title}</h2><p id="tour-description">{current.body}</p></div>
-      <footer>
-        <button type="button" className="tour-skip" onClick={onFinish}>Hopp over</button>
-        {(index > 0 || onPreviousPage) && <Button variant="outline" size="sm" onClick={back}><ArrowLeft />Forrige</Button>}
-        <Button size="sm" ref={advance} onClick={forward}>{last ? next ? 'Videre til ' + next.label : 'Fullfør' : 'Neste'}{last && !next ? <Check /> : <ArrowRight />}</Button>
-      </footer>
-    </article>
-  </dialog>
+  return (
+    <dialog
+      ref={dialog}
+      className="workspace-tour"
+      aria-label="Omvisning i Nexflow"
+      aria-describedby="tour-description"
+      onCancel={(event) => {
+        event.preventDefault()
+        onFinish()
+      }}
+    >
+      <div className="tour-ring" ref={ring} aria-hidden="true" />
+      <article ref={panel} className="tour-card">
+        <header>
+          <span>{chapterLabel}</span>
+          <span>
+            Steg {index + 1} av {steps.length}
+          </span>
+        </header>
+        <progress aria-label="Fremdrift på denne siden" value={index + 1} max={steps.length} />
+        <div aria-live="polite" aria-atomic="true">
+          <h2>{current.title}</h2>
+          <p id="tour-description">{current.body}</p>
+        </div>
+        <footer>
+          <button type="button" className="tour-skip" onClick={onFinish}>
+            Hopp over
+          </button>
+          {(index > 0 || onPreviousPage) && (
+            <Button variant="outline" size="sm" onClick={back}>
+              <ArrowLeft />
+              Forrige
+            </Button>
+          )}
+          <Button size="sm" ref={advance} onClick={forward}>
+            {last ? (next ? 'Videre til ' + next.label : 'Fullfør') : 'Neste'}
+            {last && !next ? <Check /> : <ArrowRight />}
+          </Button>
+        </footer>
+      </article>
+    </dialog>
+  )
 }

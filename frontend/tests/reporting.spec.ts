@@ -11,17 +11,22 @@ test.beforeEach(async ({ page }) => {
   await page.getByRole('button', { name: 'Åpne demonstrasjon' }).click()
 })
 
-test('reports show chart definitions, cohort conversion and accessible daily data', async ({ page }) => {
+test('reports show chart definitions, cohort conversion and accessible daily data', async ({
+  page,
+}) => {
   await navigate(page, 'Rapporter')
-  await page.getByRole('button', {name:'Prosjektanalyse', exact:true}).click()
+  await page.getByRole('button', { name: 'Prosjektanalyse', exact: true }).click()
   await expect(page.getByText('Illustrasjonsdata', { exact: false })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pipeline akkurat nå' })).toBeVisible()
-  await page.getByRole('group', { name: 'Måltall i diagram' }).getByRole('button',{name:/Salg registrert/}).click()
+  await page
+    .getByRole('group', { name: 'Måltall i diagram' })
+    .getByRole('button', { name: /Salg registrert/ })
+    .click()
   await expect(page.getByRole('img', { name: /Salg registrert per dag/ })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Typisk salgsbeløp' })).toBeVisible()
-  await page.getByRole('button',{name:'Åpne dagsrapport'}).click()
+  await page.getByRole('button', { name: 'Åpne dagsrapport' }).click()
   await expect(page.getByRole('dialog')).toContainText('Registrert salgsverdi')
-  await page.getByRole('button',{name:'Lukk',exact:true}).click()
+  await page.getByRole('button', { name: 'Lukk', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Fra nytt lead til salg' })).toBeVisible()
   await page.getByText('Se datagrunnlaget per dag', { exact: true }).click()
   await expect(page.getByRole('table')).toBeVisible()
@@ -47,7 +52,9 @@ test('follow-up can be created, completed and inspected from its lead', async ({
   await expect(page.getByRole('heading', { name: 'Aktivitetshistorikk' })).toBeVisible()
   await page.getByRole('button', { name: 'Lukk', exact: true }).click()
   await page.getByRole('button', { name: 'Fullfør', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Ingen oppgaver i denne visningen' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Ingen oppgaver i denne visningen' }),
+  ).toBeVisible()
   await page.getByLabel('Oppgavestatus').selectOption('done')
   await expect(page.locator('.task-list')).toContainText('Følg opp tilbudet til Fjord')
   await expect(page.locator('.task-list')).toContainText('Fullført')

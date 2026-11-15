@@ -11,9 +11,9 @@ PDF-ens Java/Spring-anbefaling er erstattet av prosjektets obligatoriske stack.
 | Dagens prioriterte ringeliste og leadkort | 2, 11 | Implementert med søk, statuser og leadkort |
 | Samtaleutfall, tilbakekalling | 2, 11 | Implementert; møte/salg-utfall erstatter ikke egne forretningsposter |
 | Selgerflytting og historikk | 3, 9 | Leder kan flytte selger mellom prosjekter. Tildelt kontakt deler historikk med ny ansvarlig. Andre overføringsregler avklares med kunden. |
-| CSV/Excel og Brreg-filter | 3, 10–11 | Validert batchimport-API; filopplasting, parser og Brreg-søk gjenstår |
+| CSV/Excel og Brreg-filter | 3, 10–11 | Validert batchimport og søk etter Oslo-bedrifter med bransjefilter. Filopplasting og CSV-/Excel-parser gjenstår. |
 | Enhetsregister-berikelse | 10 | Arbeider, retries og kontrakttest skrevet |
-| Regnskapstall og AI-samtalegrunnlag | 10 | Gjenstår; demooppsummeringer er tydelig fiktive |
+| Regnskapstall og AI-samtalegrunnlag | 10 | Regnskapstall, lederroller og et tekstutdrag fra registrert nettsted vises på kundekortet. En egen AI-generert analyse gjenstår. |
 | Ingen privatpersonberikelse eller katalogskraping | 4, 10 | B2B-begrensning i arbeider og RLS |
 | B2C-registerkontroll ved import og månedlig | 3, 9–10 | Sjekkmodell og ferskhetsregel; leverandør og planlegging gjenstår |
 | Partnerspesifikt samtykke og bevis | 3, 9 | Scope, gyldighet og tilbakekalling i modell/regler; innhentingsflyt gjenstår |

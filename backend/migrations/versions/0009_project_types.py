@@ -1,4 +1,5 @@
 """Independent project-type label for sales operations and portfolio filtering."""
+
 from alembic import op
 
 revision = "0009"

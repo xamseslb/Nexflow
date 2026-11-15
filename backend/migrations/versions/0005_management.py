@@ -1,4 +1,5 @@
 """Scoped team names and private sale documentation on Supabase Storage."""
+
 from pathlib import Path
 from alembic import op
 
@@ -20,9 +21,10 @@ def upgrade():
         REVOKE ALL ON FUNCTION hub_private.team_directory(uuid) FROM PUBLIC;
         GRANT EXECUTE ON FUNCTION hub_private.team_directory(uuid) TO hub_api;
     """)
-    op.execute((Path(__file__).resolve().parents[1] / "sale_documents.sql").read_text(encoding="utf-8"))
+    op.execute(
+        (Path(__file__).resolve().parents[1] / "sale_documents.sql").read_text(encoding="utf-8")
+    )
 
 
 def downgrade():
     raise RuntimeError("Bruk en gjennomgått fremoverrettet migrering for salgsdokumenter.")
-
